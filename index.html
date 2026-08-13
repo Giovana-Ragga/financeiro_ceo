@@ -463,6 +463,7 @@
       <input type="file" id="btnImport" accept="application/json">
       <button class="icon-btn" id="btnClearStorage" title="Limpar dados salvos neste navegador">🗑</button>
       <button class="icon-btn" id="btnScreenshot" title="Tirar print do mês (JPEG)">📸</button>
+      <button class="icon-btn" id="btnDownloadIndex" title="Baixar index.html atualizado com os dados de agora (para publicar no GitHub/Vercel)">🌐</button>
       <span class="toolbar-sep"></span>
       <button class="btn btn-primary btn-compact" id="btnNew">+ Nova Despesa</button>
     </div>
@@ -660,6 +661,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
+
+  const PRISTINE_HTML = document.documentElement.outerHTML;
 
   const CATEGORY_COLORS = {
     'Aluguel': '#1c2b3c',
@@ -1542,6 +1545,55 @@
       });
     }, 50);
   }
+
+  /* ---------- Baixar index.html atualizado (para publicar) ---------- */
+  function escapeForScriptTag(str){
+    return String(str).replace(/<\/script/gi, '<\\/script');
+  }
+
+  function attrEscape(str){
+    return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  }
+
+  function downloadUpdatedIndex(){
+    let html = PRISTINE_HTML;
+
+    const expensesJson = escapeForScriptTag(JSON.stringify(expenses));
+    const replacedExpenses = html.replace('let expenses = [];', 'let expenses = ' + expensesJson + ';');
+    if(replacedExpenses === html){
+      alert('Não foi possível localizar o ponto de inserção dos dados no arquivo original. Nada foi alterado.');
+      return;
+    }
+    html = replacedExpenses;
+
+    const ceoNameVal = el('ceoName').value.trim();
+    const cartaoTitularVal = el('cartaoTitular').value.trim();
+
+    html = html.replace(
+      '<input id="ceoName" class="subtitle-name" placeholder="Nome do CEO" size="14">',
+      '<input id="ceoName" class="subtitle-name" placeholder="Nome do CEO" size="14" value="' + attrEscape(ceoNameVal) + '">'
+    );
+    html = html.replace(
+      '<input id="cartaoTitular" placeholder="Titular do Cartão">',
+      '<input id="cartaoTitular" placeholder="Titular do Cartão" value="' + attrEscape(cartaoTitularVal) + '">'
+    );
+
+    html = '<!DOCTYPE html>\n' + html;
+
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'index.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('index.html gerado com os dados atuais (' + expenses.length + ' despesas). Suba esse arquivo no repositório do GitHub para atualizar o link público.');
+  }
+
+  el('btnDownloadIndex').addEventListener('click', downloadUpdatedIndex);
 
   el('btnScreenshot').addEventListener('click', takeScreenshot);
 
