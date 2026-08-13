@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Financeiro Pessoal</title>
+<style>
+  :root{
+    --bg:#f3f1ec;
+    --card:#ffffff;
+    --border:#e6e2d8;
+    --navy:#1c2b3c;
+    --navy-2:#25384d;
+    --text:#26303b;
+    --muted:#8b8f8a;
+    --muted-2:#a8ada6;
+    --red:#c23b3b;
+    --green:#2f9e5c;
+    --green-bg:#e5f5eb;
+    --orange:#d98a34;
+    --orange-bg:#fbf0df;
+    --gold:#d4af37;
+    --shadow: 0 1px 2px rgba(28,43,60,.04), 0 6px 20px rgba(28,43,60,.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size:14px;
+  }
+  .app{max-width:1240px;margin:0 auto;padding:28px 28px 60px;}
+
+  /* ---------- Header ---------- */
+  header{
+    border-bottom:1px solid var(--border);
+    padding:14px 0 18px;
+    margin-bottom:26px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:20px;
+    flex-wrap:wrap;
+    position:sticky;
+    top:0;
+    z-index:30;
+    background:var(--bg);
+  }
+  .header-title{display:flex; align-items:center; gap:10px;}
+  .header-title .bar{width:5px; height:30px; background:var(--navy); border-radius:2px;}
+  h1{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:26px;
+    margin:0;
+    color:var(--navy);
+    letter-spacing:.2px;
+  }
+  .subtitle-row{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    margin-top:4px;
+    font-size:12.5px;
+    color:var(--muted);
+    flex-wrap:wrap;
+  }
+  .subtitle-row input{
+    border:none;
+    background:transparent;
+    color:var(--muted);
+    font-size:12.5px;
+    padding:1px 2px;
+    border-radius:4px;
+  }
+  .subtitle-row input:hover, .subtitle-row input:focus{background:#eeece5; outline:none;}
+  .subtitle-name{font-weight:600; color:var(--text)!important;}
+  .subtitle-sep{color:var(--muted-2);}
+  .header-actions{
+    display:flex;
+    gap:2px;
+    align-items:center;
+    background:rgba(255,255,255,.9);
+    padding:5px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    box-shadow:0 2px 10px rgba(28,43,60,.08);
+  }
+  .icon-btn{
+    width:30px; height:30px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:none; background:transparent; border-radius:7px;
+    color:var(--muted); font-size:14px; padding:0;
+  }
+  .icon-btn:hover{background:#eeece5; color:var(--navy);}
+  .toolbar-sep{width:1px; height:18px; background:var(--border); margin:0 3px;}
+  .btn-compact{padding:6px 12px; font-size:12px; border-radius:8px;}
+  .storage-indicator{
+    width:30px; height:30px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:14px; color:var(--muted);
+  }
+  .storage-indicator.storage-error{color:var(--red);}
+
+  button{font-family:inherit; cursor:pointer;}
+  .btn{
+    border:1px solid var(--border);
+    background:var(--card);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:500;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    transition:.15s;
+  }
+  .btn:hover{border-color:var(--navy); color:var(--navy);}
+  .btn-primary{
+    background:var(--navy);
+    color:#fff;
+    border:1px solid var(--navy);
+  }
+  .btn-primary:hover{background:var(--navy-2); color:#fff;}
+  .btn-icon{padding:8px 10px;}
+
+  /* ---------- Section titles ---------- */
+  .section-title{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:18px;
+    color:var(--navy);
+    margin:0 0 14px;
+  }
+  section{margin-bottom:26px;}
+
+  /* ---------- Big total card ---------- */
+  .hero-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:18px 22px;
+    max-width:340px;
+  }
+  .hero-label{
+    font-size:11px;
+    letter-spacing:.06em;
+    color:var(--muted);
+    text-transform:uppercase;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .hero-value{
+    font-size:26px;
+    font-weight:700;
+    color:var(--red);
+    margin-top:6px;
+  }
+
+  /* ---------- Month tabs ---------- */
+  .composition-bar{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .month-tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .month-tab{
+    border:1px solid var(--border);
+    background:var(--card);
+    color:var(--text);
+    padding:7px 14px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:500;
+  }
+  .month-tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .month-tabs-empty{font-size:13px; color:var(--muted); font-style:italic;}
+  .year-box{
+    display:flex; align-items:center; gap:4px;
+    border:1px solid var(--border); background:var(--card);
+    border-radius:8px; padding:4px 6px;
+  }
+  .year-box button{border:none; background:transparent; color:var(--muted); font-size:15px; padding:2px 6px; border-radius:5px;}
+  .year-box button:hover{background:#eeece5; color:var(--navy);}
+  .year-box input{
+    width:52px; text-align:center; border:none; background:transparent;
+    font-size:14px; font-weight:600; color:var(--text);
+  }
+  .year-box input:focus{outline:none;}
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .summary-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:16px 20px;
+    text-align:center;
+  }
+  .summary-card .label{font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase;}
+  .summary-card .value{font-size:18px; font-weight:700; color:var(--text); margin-top:6px;}
+  .summary-card .value.red{color:var(--red);}
+
+  /* ---------- Card widget (cartão de crédito) ---------- */
+  .card-widget{
+    background:var(--navy);
+    border-radius:14px;
+    color:#fff;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .card-widget-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 22px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .card-widget-head .title{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600;}
+  .card-widget-head .title input{
+    background:transparent; border:none; color:#fff; font-weight:600; font-size:14px;
+    border-bottom:1px dashed rgba(255,255,255,.25); padding:0 2px; width:150px;
+  }
+  .card-widget-head .title input:focus{outline:none; border-color:rgba(255,255,255,.6);}
+  .card-widget-head .total-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:rgba(255,255,255,.55); text-align:right;}
+  .card-widget-head .total-value{font-size:17px; font-weight:700; text-align:right;}
+  .card-widget-actions{display:flex; align-items:center; gap:12px;}
+  .btn-import-fatura{
+    background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.2);
+    border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; white-space:nowrap;
+  }
+  .btn-import-fatura:hover{background:rgba(255,255,255,.18);}
+  .card-table{width:100%; border-collapse:collapse;}
+  .card-table th{
+    text-align:left; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:rgba(255,255,255,.45); font-weight:600; padding:10px 22px 8px; border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .card-table td{padding:11px 22px; font-size:13px; border-bottom:1px solid rgba(255,255,255,.06); vertical-align:middle;}
+  .card-table tr:last-child td{border-bottom:none;}
+  .card-table .fornecedor{font-weight:600; color:#fff;}
+  .card-table .descricao{color:rgba(255,255,255,.5); font-size:11.5px; margin-top:1px;}
+  .card-table .valor{text-align:right; font-weight:700; color:#fff;}
+  .pill{
+    display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;
+  }
+  .pill-dark{background:rgba(255,255,255,.1); color:#fff;}
+  .card-empty{padding:22px; text-align:center; color:rgba(255,255,255,.5); font-size:13px;}
+  .card-table-scroll{max-height:300px; overflow-y:auto; overflow-x:hidden;}
+  .card-table-scroll::-webkit-scrollbar{width:7px;}
+  .card-table-scroll::-webkit-scrollbar-track{background:transparent;}
+  .card-table-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15); border-radius:4px;}
+  .card-table thead th{position:sticky; top:0; background:var(--navy); z-index:2;}
+
+  /* ---------- Main grid: donut + table ---------- */
+  .main-grid{
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  .panel{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:20px;
+  }
+  .donut-wrap{display:flex; flex-direction:column; align-items:center;}
+  .donut-svg{width:190px; height:190px;}
+  .legend{width:100%; margin-top:14px; display:flex; flex-direction:column; gap:9px;}
+  .legend-row{display:flex; align-items:center; font-size:12.5px; gap:8px;}
+  .legend-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
+  .legend-name{flex:1; color:var(--text);}
+  .legend-pct{font-weight:700; color:var(--text); width:34px; text-align:right;}
+  .legend-val{color:var(--muted); width:78px; text-align:right; font-size:11.5px;}
+  .donut-empty{color:var(--muted); font-size:13px; text-align:center; padding:30px 0;}
+
+  /* table panel */
+  .table-panel-head{
+    display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  .search-box{
+    border:1px solid var(--border); border-radius:8px; padding:7px 12px;
+    font-size:13px; min-width:200px; flex:1; max-width:280px; background:#faf9f6;
+  }
+  .search-box:focus{outline:none; border-color:var(--navy);}
+  .category-filter{
+    border:1px solid var(--border); border-radius:8px; padding:7px 10px;
+    font-size:13px; background:#faf9f6; color:var(--text); min-width:150px;
+  }
+  .category-filter:focus{outline:none; border-color:var(--navy);}
+  .table-count{
+    font-size:12px; color:var(--muted); white-space:nowrap;
+    display:flex; align-items:center; gap:5px;
+  }
+  .table-count .checked-count{color:var(--green); font-weight:700;}
+  .table-scroll{
+    max-height:500px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    border-radius:8px;
+  }
+  .table-scroll::-webkit-scrollbar{width:7px;}
+  .table-scroll::-webkit-scrollbar-track{background:transparent;}
+  .table-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  .table-scroll::-webkit-scrollbar-thumb:hover{background:var(--muted-2);}
+  table.expenses thead th{
+    position:sticky;
+    top:0;
+    background:var(--card);
+    z-index:2;
+  }
+  table.expenses{width:100%; border-collapse:collapse;}
+  table.expenses th{
+    text-align:left; font-size:10px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; padding:0 10px 10px; border-bottom:1px solid var(--border);
+  }
+  table.expenses td{padding:11px 10px; border-bottom:1px solid var(--border); vertical-align:middle; font-size:13px;}
+  table.expenses tr:last-child td{border-bottom:none;}
+  table.expenses .fornecedor{font-weight:600; color:var(--text);}
+  table.expenses .descricao{color:var(--muted); font-size:11.5px; margin-top:1px;}
+  table.expenses .valor{text-align:right; font-weight:700; white-space:nowrap;}
+  table.expenses .venc{white-space:nowrap; color:var(--text);}
+  .cat-badge{
+    display:inline-block; padding:3px 9px; border-radius:6px; font-size:11px; font-weight:600; color:#fff;
+  }
+  .type-pill{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+  .type-recorrente{background:var(--green-bg); color:var(--green);}
+  .type-variavel{background:var(--orange-bg); color:var(--orange);}
+  .pgt-badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+  .pgt-boleto{background:#eef0f2; color:#5b6472;}
+  .pgt-pix{background:#dff5f2; color:#00857a;}
+  .pgt-ted{background:#e8f0fe; color:#2f5fa8;}
+  .pgt-none{color:var(--muted-2); font-size:13px;}
+  .pix-chave{font-size:10.5px; color:var(--muted); margin-top:3px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .parcela-note{font-size:10.5px; color:var(--muted); margin-top:2px;}
+  .row-actions{display:flex; gap:4px; justify-content:flex-end;}
+  .row-actions button{
+    border:none; background:transparent; color:var(--muted); padding:5px 6px; border-radius:6px; font-size:14px;
+  }
+  .row-actions button:hover{background:#f0eee7; color:var(--navy);}
+  .check-btn{color:var(--muted-2);}
+  .check-btn:hover{background:#e5f5eb; color:var(--green);}
+  .check-btn.checked{color:var(--green); background:var(--green-bg);}
+  .check-btn.checked:hover{background:#d8f0e0;}
+  tr.row-checked{background:var(--green-bg);}
+  tr.row-checked:hover{background:var(--green-bg);}
+  .cartao-tag{font-size:10px; color:var(--muted-2); display:flex; align-items:center; gap:3px; margin-top:2px;}
+  .empty-row td{text-align:center; color:var(--muted); padding:36px 10px;}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(28,32,38,.45); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:#fff; border-radius:14px; width:100%; max-width:460px;
+    padding:24px 26px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal h2{font-family:Georgia,serif; font-size:19px; color:var(--navy); margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em;}
+  .field input[type=text], .field input[type=date], .field input[type=number], .field select{
+    width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; font-size:13.5px; font-family:inherit; background:#fbfaf7;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--navy); background:#fff;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-bottom:14px;}
+  .checkbox-row input{width:16px; height:16px;}
+  .checkbox-row label{font-size:13px; color:var(--text); margin:0;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:20px;}
+  #titularField, #parcelaField, #pixChaveField{display:none;}
+
+  .btn-mirror-year{
+    font-size:12.5px; color:var(--navy); border-color:var(--navy); font-weight:600;
+  }
+  .mirror-modal{max-width:600px;}
+  .mirror-modal-hint{font-size:12.5px; color:var(--muted); margin:0 0 16px; line-height:1.5;}
+  .mirror-list{display:flex; flex-direction:column; gap:2px; max-height:50vh; overflow-y:auto; border:1px solid var(--border); border-radius:10px;}
+  .mirror-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--border);
+  }
+  .mirror-row:last-child{border-bottom:none;}
+  .mirror-row.excluded{opacity:.45;}
+  .mirror-row input[type=checkbox]{width:16px; height:16px; flex:0 0 auto;}
+  .mirror-row .mirror-info{flex:1; min-width:0;}
+  .mirror-row .mirror-fornecedor{font-size:13px; font-weight:600; color:var(--text);}
+  .mirror-row .mirror-meta{font-size:11px; color:var(--muted); margin-top:1px;}
+  .mirror-row .mirror-valor{
+    width:110px; padding:6px 8px; border:1px solid var(--border); border-radius:7px; font-size:13px; text-align:right;
+  }
+  .mirror-empty{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
+
+  input[type=file]{display:none;}
+
+  #printCapture{
+    position:fixed;
+    top:0;
+    left:-99999px;
+    width:720px;
+    background:#ffffff;
+    padding:32px;
+    box-sizing:border-box;
+  }
+  .print-header{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .print-header .bar{width:5px; height:26px; background:var(--navy); border-radius:2px;}
+  .print-header h1{font-family:Georgia,"Times New Roman",serif; font-size:21px; color:var(--navy); margin:0;}
+  .print-subtitle{font-size:12px; color:var(--muted); margin-bottom:22px;}
+  .print-subtitle strong{color:var(--text);}
+  .print-section-title{font-family:Georgia,"Times New Roman",serif; font-size:16px; color:var(--navy); margin:0 0 12px;}
+  .print-cards{display:flex; gap:14px; margin-bottom:20px;}
+  .print-card{flex:1; border:1px solid var(--border); border-radius:14px; padding:16px 20px;}
+  .print-card .label{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+  .print-card .value{font-size:22px; font-weight:700; margin-top:6px;}
+  .print-table{width:100%; border-collapse:collapse; margin-bottom:28px;}
+  .print-table th{
+    text-align:left; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; padding:0 8px 8px; border-bottom:1px solid var(--border);
+  }
+  .print-table td{padding:8px 8px; border-bottom:1px solid var(--border); font-size:12px; vertical-align:middle;}
+  .print-table .valor{text-align:right; font-weight:700; white-space:nowrap;}
+  .print-donut-wrap{display:flex; align-items:center; gap:26px;}
+  .print-footer{margin-top:26px; font-size:10.5px; color:var(--muted-2); text-align:center;}
+
+  @media (max-width:820px){
+    .main-grid{grid-template-columns:1fr;}
+    .summary-grid{grid-template-columns:1fr;}
+    .field-row{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <div>
+      <div class="header-title">
+        <div class="bar"></div>
+        <h1>Painel Financeiro Pessoal</h1>
+      </div>
+      <div class="subtitle-row">
+        <input id="ceoName" class="subtitle-name" placeholder="Nome do CEO" size="14">
+        <span class="subtitle-sep">—</span>
+        <span>Fechamento Bancário, Compromissos Financeiros e Perspectiva de Caixa</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="storage-indicator" id="storageIndicator" title="Salvo neste navegador">💾</span>
+      <button class="icon-btn" id="btnExport" title="Exportar JSON">⬇</button>
+      <button class="icon-btn" id="btnImportTrigger" title="Importar JSON">⬆</button>
+      <input type="file" id="btnImport" accept="application/json">
+      <button class="icon-btn" id="btnClearStorage" title="Limpar dados salvos neste navegador">🗑</button>
+      <button class="icon-btn" id="btnScreenshot" title="Tirar print do mês (JPEG)">📸</button>
+      <span class="toolbar-sep"></span>
+      <button class="btn btn-primary btn-compact" id="btnNew">+ Nova Despesa</button>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="section-title" id="visaoTitle">Visão Consolidada — Agosto 2026</h2>
+    <div class="hero-card">
+      <div class="hero-label"><span>Saídas Projetadas do Mês</span><span>↘</span></div>
+      <div class="hero-value" id="heroValue">R$ 0,00</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Composição Financeira Pessoal</h2>
+    <div class="composition-bar">
+      <div class="month-tabs" id="monthTabs"></div>
+      <div class="year-box">
+        <button id="yearPrev">‹</button>
+        <input id="yearInput" type="number" value="2026">
+        <button id="yearNext">›</button>
+      </div>
+      <button class="btn btn-mirror-year" id="btnMirrorNextYear" style="display:none;">→ Espelhar Recorrentes para o Próximo Ano</button>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">Recorrente</div>
+        <div class="value" id="recorrenteValue">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Total do Mês</div>
+        <div class="value" id="totalMesValue">R$ 0,00</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="main-grid">
+
+      <div class="panel">
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 180 180" id="donutSvg"></svg>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="table-panel-head">
+          <input class="search-box" id="searchBox" placeholder="Buscar fornecedor ou categoria...">
+          <span class="table-count" id="tableCount"></span>
+          <select class="category-filter" id="categoryFilter"></select>
+        </div>
+        <div class="table-scroll">
+        <table class="expenses">
+          <thead>
+            <tr>
+              <th style="width:26px;">#</th>
+              <th>Fornecedor</th>
+              <th>Categoria</th>
+              <th>Tipo</th>
+              <th>Tipo de Pgt</th>
+              <th>Vencimento</th>
+              <th style="text-align:right;">Valor</th>
+              <th style="width:60px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="card-widget">
+      <div class="card-widget-head">
+        <div class="title">💳 Cartão PF — <input id="cartaoTitular" placeholder="Titular do Cartão"></div>
+        <div class="card-widget-actions">
+          <button class="btn-import-fatura" id="btnImportFatura" title="Importar fatura (.xlsx) — só entram os lançamentos com &quot;RAPHAEL&quot; na coluna Tipo de Despesa">📄 Importar Fatura</button>
+          <input type="file" id="faturaFileInput" accept=".xlsx,.xls">
+          <div style="text-align:right;">
+            <div class="total-label">Total do Mês</div>
+            <div class="total-value" id="cartaoTotal">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+      <div id="cartaoBody"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title" id="acumuladoTitle">Visão Acumulada</h2>
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">Total Acumulado no Ano</div>
+        <div class="value red" id="acumuladoTotal">R$ 0,00</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Média Mensal</div>
+        <div class="value" id="acumuladoMedia">R$ 0,00</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Nova Despesa</h2>
+    <form id="expenseForm">
+      <input type="hidden" id="expenseId">
+      <div class="field">
+        <label>Fornecedor</label>
+        <input type="text" id="fFornecedor" required>
+      </div>
+      <div class="field">
+        <label>Descrição</label>
+        <input type="text" id="fDescricao">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoria</label>
+          <input type="text" id="fCategoria" list="categoriaList" required>
+          <datalist id="categoriaList"></datalist>
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select id="fTipo">
+            <option value="Recorrente">Recorrente</option>
+            <option value="Variável">Variável</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="parcelaField">
+        <label>Parcela (ex: 03/05)</label>
+        <input type="text" id="fParcela" placeholder="03/05">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Vencimento</label>
+          <input type="date" id="fVencimento" required>
+        </div>
+        <div class="field">
+          <label>Valor (R$)</label>
+          <input type="number" id="fValor" step="0.01" min="0" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Tipo de Pgt</label>
+          <select id="fTipoPgt">
+            <option value="">Não informado</option>
+            <option value="Boleto">Boleto</option>
+            <option value="Pix">Pix</option>
+            <option value="TED">TED</option>
+          </select>
+        </div>
+        <div class="field" id="pixChaveField">
+          <label>Chave Pix</label>
+          <input type="text" id="fPixChave" placeholder="CPF, e-mail, telefone ou chave aleatória">
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="fCartao">
+        <label for="fCartao">Despesa no cartão de crédito</label>
+      </div>
+      <div class="field" id="titularField">
+        <label>Titular do Cartão</label>
+        <input type="text" id="fTitular">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="btnCancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="mirrorOverlay">
+  <div class="modal mirror-modal">
+    <h2 id="mirrorModalTitle">Espelhar Recorrentes para o Próximo Ano</h2>
+    <p class="mirror-modal-hint">Revise, ajuste os valores ou desmarque o que não deve continuar. Cada item marcado será criado em todos os meses de <span id="mirrorTargetYear"></span>.</p>
+    <div class="mirror-list" id="mirrorList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="btnMirrorCancel">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btnMirrorConfirm">Espelhar Selecionados</button>
+    </div>
+  </div>
+</div>
+
+<div id="printCapture"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+
+  const CATEGORY_COLORS = {
+    'Aluguel': '#1c2b3c',
+    'Faculdade': '#3fae63',
+    'Despesas Gerais': '#e08a3c',
+    'Condomínio': '#2f8f8a',
+    'Telefonia': '#d1483f',
+    'Plano de Saúde': '#d4af37',
+    'Ajuda de Custo': '#8f5fbf',
+    'Imposto': '#5b7fae'
+  };
+  function colorForCategory(cat){
+    if (CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
+    let hash = 0;
+    for (let i=0;i<cat.length;i++){ hash = cat.charCodeAt(i) + ((hash<<5)-hash); }
+    const hue = Math.abs(hash) % 360;
+    return 'hsl(' + hue + ', 55%, 45%)';
+  }
+
+  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const MONTH_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  let expenses = [];
+
+  const today = new Date();
+  let state = { month: today.getMonth() + 1, year: today.getFullYear(), search: '', category: '' };
+
+  const STORAGE_KEY = 'painelFinanceiroPessoal:v1';
+
+  function saveToStorage(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        expenses: expenses,
+        ceoName: el('ceoName').value,
+        cartaoTitular: el('cartaoTitular').value
+      }));
+      const ind = el('storageIndicator');
+      if(ind){ ind.textContent = '💾'; ind.title = 'Salvo neste navegador'; ind.classList.remove('storage-error'); }
+    }catch(err){
+      console.warn('Não foi possível salvar automaticamente no navegador:', err);
+      const ind = el('storageIndicator');
+      if(ind){ ind.textContent = '⚠'; ind.title = 'Não foi possível salvar automaticamente neste navegador'; ind.classList.add('storage-error'); }
+    }
+  }
+
+  function loadFromStorage(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.expenses)){
+        expenses = parsed.expenses;
+      }
+      if(parsed && parsed.ceoName){ el('ceoName').value = parsed.ceoName; }
+      if(parsed && parsed.cartaoTitular){ el('cartaoTitular').value = parsed.cartaoTitular; }
+    }catch(err){
+      console.warn('Não foi possível carregar dados salvos deste navegador:', err);
+    }
+  }
+
+  function clearStorage(){
+    if(!confirm('Isso vai apagar os dados salvos neste navegador (o arquivo .html continua intacto). Deseja continuar?')) return;
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(err){ /* ignore */ }
+    expenses = [];
+    el('ceoName').value = '';
+    el('cartaoTitular').value = '';
+    render();
+  }
+
+  const el = (id) => document.getElementById(id);
+
+  function fmtCurrency(n){
+    return 'R$ ' + (n||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtDateBR(iso){
+    if(!iso) return '—';
+    const [y,m,d] = iso.split('-');
+    return d + '/' + m + '/' + y;
+  }
+  function parseVenc(iso){
+    const [y,m,d] = iso.split('-').map(Number);
+    return {y,m,d};
+  }
+  function uid(){
+    return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+  function pad2(n){
+    return String(n).padStart(2,'0');
+  }
+  function lastDayOfMonth(year, month){
+    return new Date(year, month, 0).getDate();
+  }
+  function buildDateISO(year, month, day){
+    const clampedDay = Math.min(day, lastDayOfMonth(year, month));
+    return year + '-' + pad2(month) + '-' + pad2(clampedDay);
+  }
+  function entryExists(fornecedor, categoria, valor, year, month, recurrenceId){
+    return expenses.some(function(e){
+      const ep = parseVenc(e.vencimento);
+      if(ep.y !== year || ep.m !== month) return false;
+      if(recurrenceId){
+        return e.recurrenceId === recurrenceId;
+      }
+      return e.fornecedor === fornecedor && e.categoria === categoria &&
+             Math.abs(Number(e.valor||0) - Number(valor||0)) < 0.01;
+    });
+  }
+
+  // Mirrors a Recorrente expense forward month-by-month through December of the SAME year.
+  // Skips any month that already has an equivalent entry (same fornecedor + categoria).
+  function mirrorRecorrenteForward(source){
+    if(source.tipo !== 'Recorrente') return 0;
+    if(!source.recurrenceId){ source.recurrenceId = uid(); }
+    const p = parseVenc(source.vencimento);
+    let created = 0;
+    for(let m = p.m + 1; m <= 12; m++){
+      if(entryExists(source.fornecedor, source.categoria, source.valor, p.y, m, source.recurrenceId)) continue;
+      expenses.push({
+        id: uid(),
+        fornecedor: source.fornecedor,
+        descricao: source.descricao,
+        categoria: source.categoria,
+        tipo: 'Recorrente',
+        parcela: '',
+        vencimento: buildDateISO(p.y, m, p.d),
+        valor: source.valor,
+        cartao: source.cartao,
+        titular: source.titular,
+        tipoPgt: source.tipoPgt || '',
+        pixChave: source.pixChave || '',
+        recurrenceId: source.recurrenceId
+      });
+      created++;
+    }
+    return created;
+  }
+
+  function expensesForMonth(){
+    return expenses.filter(function(e){
+      const p = parseVenc(e.vencimento);
+      return p.y === state.year && p.m === state.month;
+    });
+  }
+
+  function render(){
+    renderMonthTabs();
+    renderHeaderTitle();
+    renderSummary();
+    renderCardWidget();
+    renderDonut();
+    renderCategoryFilterOptions();
+    renderTable();
+    renderCategoriaDatalist();
+    renderAccumulated();
+    renderMirrorButton();
+    saveToStorage();
+  }
+
+  function renderMirrorButton(){
+    const btn = el('btnMirrorNextYear');
+    if(state.month === 12){
+      btn.style.display = 'inline-flex';
+      btn.textContent = '→ Espelhar Recorrentes para ' + (state.year + 1);
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  function renderAccumulated(){
+    const months = getAvailableMonths(state.year);
+    const title = el('acumuladoTitle');
+    const totalEl = el('acumuladoTotal');
+    const mediaEl = el('acumuladoMedia');
+
+    if(months.length === 0){
+      title.textContent = 'Visão Acumulada — ' + state.year;
+      totalEl.textContent = fmtCurrency(0);
+      mediaEl.textContent = fmtCurrency(0);
+      return;
+    }
+
+    const rangeLabel = months.length === 1
+      ? MONTH_FULL[months[0]-1] + ' ' + state.year
+      : MONTH_FULL[months[0]-1] + ' a ' + MONTH_FULL[months[months.length-1]-1] + ' ' + state.year;
+    title.textContent = 'Visão Acumulada — ' + rangeLabel;
+
+    const yearList = expenses.filter(function(e){ return parseVenc(e.vencimento).y === state.year; });
+    const total = yearList.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const media = total / months.length;
+
+    totalEl.textContent = fmtCurrency(total);
+    mediaEl.textContent = fmtCurrency(media);
+  }
+
+  function renderHeaderTitle(){
+    el('visaoTitle').textContent = 'Visão Consolidada — ' + MONTH_FULL[state.month-1] + ' ' + state.year;
+    el('yearInput').value = state.year;
+  }
+
+  function getAvailableMonths(year){
+    const set = new Set();
+    expenses.forEach(function(e){
+      const p = parseVenc(e.vencimento);
+      if(p.y === year) set.add(p.m);
+    });
+    return Array.from(set).sort(function(a,b){ return a-b; });
+  }
+
+  function renderMonthTabs(){
+    const wrap = el('monthTabs');
+    wrap.innerHTML = '';
+    const available = getAvailableMonths(state.year);
+
+    if(available.length && available.indexOf(state.month) === -1){
+      state.month = available[0];
+    }
+
+    if(available.length === 0){
+      const hint = document.createElement('span');
+      hint.className = 'month-tabs-empty';
+      hint.textContent = 'Nenhuma movimentação em ' + state.year + '. Adicione uma despesa para começar.';
+      wrap.appendChild(hint);
+      return;
+    }
+
+    available.forEach(function(m){
+      const btn = document.createElement('button');
+      btn.className = 'month-tab' + (m === state.month ? ' active' : '');
+      btn.textContent = MONTH_NAMES[m-1];
+      btn.addEventListener('click', function(){
+        state.month = m;
+        render();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function renderSummary(){
+    const list = expensesForMonth();
+    const total = list.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const recorrente = list.filter(function(e){ return e.tipo === 'Recorrente'; })
+                            .reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    el('heroValue').textContent = fmtCurrency(total);
+    el('totalMesValue').textContent = fmtCurrency(total);
+    el('recorrenteValue').textContent = fmtCurrency(recorrente);
+  }
+
+  function buildCardTableRows(list){
+    const sorted = list.slice().sort(function(a,b){ return parseVenc(a.vencimento).d - parseVenc(b.vencimento).d; });
+    let rows = '';
+    sorted.forEach(function(e){
+      const tipoLabel = e.tipo === 'Variável' && e.parcela ? e.parcela : e.tipo;
+      rows += '<tr>' +
+        '<td><div class="fornecedor">' + escapeHtml(e.fornecedor) + '</div><div class="descricao">' + escapeHtml(e.descricao||'') + '</div></td>' +
+        '<td><span class="pill pill-dark">' + escapeHtml(tipoLabel) + '</span></td>' +
+        '<td>' + fmtDateBR(e.vencimento) + '</td>' +
+        '<td class="valor">' + fmtCurrency(e.valor) + '</td>' +
+        '</tr>';
+    });
+    return rows;
+  }
+
+  function renderCardWidget(){
+    const list = expensesForMonth().filter(function(e){ return e.cartao; });
+    const total = list.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    el('cartaoTotal').textContent = fmtCurrency(total);
+    const body = el('cartaoBody');
+    if(list.length === 0){
+      body.innerHTML = '<div class="card-empty">Nenhuma despesa de cartão neste mês.</div>';
+      return;
+    }
+    const rows = buildCardTableRows(list);
+    body.innerHTML = '<div class="card-table-scroll"><table class="card-table"><thead><tr><th>Fornecedor</th><th>Tipo / Parcela</th><th>Vencimento</th><th style="text-align:right;">Valor</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
+  function computeCategorySegments(list){
+    const total = list.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    if(total <= 0) return { total: 0, segments: [] };
+    const byCat = {};
+    list.forEach(function(e){
+      byCat[e.categoria] = (byCat[e.categoria]||0) + Number(e.valor||0);
+    });
+    const segments = Object.keys(byCat).map(function(cat){
+      return { cat: cat, value: byCat[cat], pct: (byCat[cat]/total)*100, color: colorForCategory(cat) };
+    }).sort(function(a,b){ return b.value - a.value; });
+    return { total: total, segments: segments };
+  }
+
+  function buildDonutSvgCircles(segments){
+    const r = 70, cx = 90, cy = 90, circumference = 2 * Math.PI * r;
+    let cumulative = 0;
+    let svgParts = '';
+    segments.forEach(function(seg){
+      const dash = (seg.pct/100) * circumference;
+      const gap = circumference - dash;
+      const offset = circumference * (1 - cumulative/100);
+      svgParts += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.color + '" ' +
+        'stroke-width="26" stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '" ' +
+        'stroke-dashoffset="' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')" />';
+      cumulative += seg.pct;
+    });
+    return svgParts;
+  }
+
+  function buildLegendRows(segments){
+    let legendHtml = '';
+    segments.forEach(function(seg){
+      legendHtml += '<div class="legend-row">' +
+        '<span class="legend-dot" style="background:' + seg.color + '"></span>' +
+        '<span class="legend-name">' + escapeHtml(seg.cat) + '</span>' +
+        '<span class="legend-pct">' + Math.round(seg.pct) + '%</span>' +
+        '<span class="legend-val">' + fmtCurrency(seg.value) + '</span>' +
+        '</div>';
+    });
+    return legendHtml;
+  }
+
+  function renderDonut(){
+    const list = expensesForMonth();
+    const { total, segments } = computeCategorySegments(list);
+    const svg = el('donutSvg');
+    const legend = el('legend');
+
+    if(total <= 0){
+      svg.innerHTML = '';
+      legend.innerHTML = '<div class="donut-empty">Sem despesas neste mês.</div>';
+      return;
+    }
+
+    svg.innerHTML = buildDonutSvgCircles(segments);
+    legend.innerHTML = buildLegendRows(segments);
+  }
+
+  function renderCategoryFilterOptions(){
+    const sel = el('categoryFilter');
+    const cats = Array.from(new Set(expenses.map(function(e){ return e.categoria; }))).sort(function(a,b){
+      return a.localeCompare(b, 'pt-BR');
+    });
+    if(state.category && cats.indexOf(state.category) === -1){
+      state.category = '';
+    }
+    let html = '<option value="">Todas as Categorias</option>';
+    cats.forEach(function(c){
+      html += '<option value="' + escapeHtml(c) + '"' + (c === state.category ? ' selected' : '') + '>' + escapeHtml(c) + '</option>';
+    });
+    sel.innerHTML = html;
+  }
+
+  function renderPgtCell(e){
+    if(!e.tipoPgt){
+      return '<span class="pgt-none">—</span>';
+    }
+    const cls = e.tipoPgt === 'Pix' ? 'pgt-pix' : (e.tipoPgt === 'Boleto' ? 'pgt-boleto' : 'pgt-ted');
+    let html = '<span class="pgt-badge ' + cls + '">' + escapeHtml(e.tipoPgt) + '</span>';
+    if(e.tipoPgt === 'Pix' && e.pixChave){
+      html += '<div class="pix-chave" title="' + escapeHtml(e.pixChave) + '">' + escapeHtml(e.pixChave) + '</div>';
+    }
+    return html;
+  }
+
+  function renderTable(){
+    let list = expensesForMonth().slice().sort(function(a,b){
+      return a.fornecedor.localeCompare(b.fornecedor, 'pt-BR', {sensitivity:'base'});
+    });
+    if(state.category){
+      list = list.filter(function(e){ return e.categoria === state.category; });
+    }
+    if(state.search.trim()){
+      const q = state.search.trim().toLowerCase();
+      list = list.filter(function(e){
+        return (e.fornecedor||'').toLowerCase().indexOf(q) > -1 ||
+               (e.categoria||'').toLowerCase().indexOf(q) > -1 ||
+               (e.descricao||'').toLowerCase().indexOf(q) > -1;
+      });
+    }
+
+    const totalCount = list.length;
+    const checkedCount = list.filter(function(e){ return e.conferido; }).length;
+    el('tableCount').innerHTML = totalCount + ' lançamento' + (totalCount !== 1 ? 's' : '') +
+      ' · <span class="checked-count">' + checkedCount + ' conferido' + (checkedCount !== 1 ? 's' : '') + '</span>';
+
+    const tbody = el('tableBody');
+    if(list.length === 0){
+      const msg = (state.category || state.search.trim())
+        ? 'Nenhuma despesa encontrada para esse filtro.'
+        : 'Nenhuma despesa encontrada. Clique em "+ Nova Despesa" para adicionar.';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">' + msg + '</td></tr>';
+      return;
+    }
+    let rows = '';
+    list.forEach(function(e, idx){
+      const tipoClass = e.tipo === 'Recorrente' ? 'type-recorrente' : 'type-variavel';
+      const parcelaNote = (e.tipo === 'Variável' && e.parcela) ? '<div class="parcela-note">Parcela ' + escapeHtml(e.parcela) + '</div>' : '';
+      const cartaoTag = e.cartao ? '<div class="cartao-tag">💳 ' + escapeHtml(e.titular||'Cartão') + '</div>' : '';
+      const checkedClass = e.conferido ? ' checked' : '';
+      const pgtCell = renderPgtCell(e);
+      rows += '<tr class="' + (e.conferido ? 'row-checked' : '') + '">' +
+        '<td>' + (idx+1) + '</td>' +
+        '<td><div class="fornecedor">' + escapeHtml(e.fornecedor) + '</div>' +
+          (e.descricao ? '<div class="descricao">' + escapeHtml(e.descricao) + '</div>' : '') +
+          cartaoTag +
+        '</td>' +
+        '<td><span class="cat-badge" style="background:' + colorForCategory(e.categoria) + '">' + escapeHtml(e.categoria) + '</span></td>' +
+        '<td><span class="type-pill ' + tipoClass + '">' + e.tipo + '</span>' + parcelaNote + '</td>' +
+        '<td>' + pgtCell + '</td>' +
+        '<td class="venc">' + fmtDateBR(e.vencimento) + '</td>' +
+        '<td class="valor">' + fmtCurrency(e.valor) + '</td>' +
+        '<td><div class="row-actions">' +
+          '<button data-edit="' + e.id + '" title="Editar">✎</button>' +
+          '<button data-check="' + e.id + '" title="' + (e.conferido ? 'Desmarcar conferido' : 'Marcar como conferido') + '" class="check-btn' + checkedClass + '">✔</button>' +
+          '<button data-del="' + e.id + '" title="Excluir">🗑</button>' +
+        '</div></td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = rows;
+
+    tbody.querySelectorAll('[data-edit]').forEach(function(btn){
+      btn.addEventListener('click', function(){ openModal(btn.getAttribute('data-edit')); });
+    });
+    tbody.querySelectorAll('[data-del]').forEach(function(btn){
+      btn.addEventListener('click', function(){ handleDelete(btn.getAttribute('data-del')); });
+    });
+    tbody.querySelectorAll('[data-check]').forEach(function(btn){
+      btn.addEventListener('click', function(){ toggleConferido(btn.getAttribute('data-check')); });
+    });
+  }
+
+  function toggleConferido(id){
+    const e = expenses.find(function(x){ return x.id === id; });
+    if(!e) return;
+    e.conferido = !e.conferido;
+    render();
+  }
+
+  function renderCategoriaDatalist(){
+    const cats = new Set(Object.keys(CATEGORY_COLORS));
+    expenses.forEach(function(e){ cats.add(e.categoria); });
+    el('categoriaList').innerHTML = Array.from(cats).map(function(c){
+      return '<option value="' + escapeHtml(c) + '">';
+    }).join('');
+  }
+
+  function escapeHtml(str){
+    return String(str==null?'':str).replace(/[&<>"']/g, function(m){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+    });
+  }
+
+  /* ---------- Modal handling ---------- */
+  function openModal(id){
+    el('expenseForm').reset();
+    el('expenseId').value = '';
+    el('modalTitle').textContent = 'Nova Despesa';
+    el('parcelaField').style.display = 'none';
+    el('titularField').style.display = 'none';
+    el('pixChaveField').style.display = 'none';
+
+    if(id){
+      const e = expenses.find(function(x){ return x.id === id; });
+      if(e){
+        el('modalTitle').textContent = 'Editar Despesa';
+        el('expenseId').value = e.id;
+        el('fFornecedor').value = e.fornecedor;
+        el('fDescricao').value = e.descricao||'';
+        el('fCategoria').value = e.categoria;
+        el('fTipo').value = e.tipo;
+        el('fParcela').value = e.parcela||'';
+        el('fVencimento').value = e.vencimento;
+        el('fValor').value = e.valor;
+        el('fCartao').checked = !!e.cartao;
+        el('fTitular').value = e.titular||'';
+        el('fTipoPgt').value = e.tipoPgt||'';
+        el('fPixChave').value = e.pixChave||'';
+        el('parcelaField').style.display = e.tipo === 'Variável' ? 'block' : 'none';
+        el('titularField').style.display = e.cartao ? 'block' : 'none';
+        el('pixChaveField').style.display = e.tipoPgt === 'Pix' ? 'block' : 'none';
+      }
+    } else {
+      const d = new Date(state.year, state.month-1, Math.min(new Date().getDate(),28));
+      el('fVencimento').value = state.year + '-' + String(state.month).padStart(2,'0') + '-10';
+    }
+    el('overlay').classList.add('open');
+  }
+  function closeModal(){
+    el('overlay').classList.remove('open');
+  }
+
+  function handleDelete(id){
+    const e = expenses.find(function(x){ return x.id === id; });
+    if(!e) return;
+    if(confirm('Excluir a despesa "' + e.fornecedor + '"?')){
+      expenses = expenses.filter(function(x){ return x.id !== id; });
+      render();
+    }
+  }
+
+  el('fTipo').addEventListener('change', function(){
+    el('parcelaField').style.display = el('fTipo').value === 'Variável' ? 'block' : 'none';
+  });
+  el('fCartao').addEventListener('change', function(){
+    el('titularField').style.display = el('fCartao').checked ? 'block' : 'none';
+  });
+  el('fTipoPgt').addEventListener('change', function(){
+    el('pixChaveField').style.display = el('fTipoPgt').value === 'Pix' ? 'block' : 'none';
+  });
+
+  el('expenseForm').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    const id = el('expenseId').value;
+    const data = {
+      fornecedor: el('fFornecedor').value.trim(),
+      descricao: el('fDescricao').value.trim(),
+      categoria: el('fCategoria').value.trim(),
+      tipo: el('fTipo').value,
+      parcela: el('fParcela').value.trim(),
+      vencimento: el('fVencimento').value,
+      valor: parseFloat(el('fValor').value) || 0,
+      cartao: el('fCartao').checked,
+      titular: el('fTitular').value.trim(),
+      tipoPgt: el('fTipoPgt').value,
+      pixChave: el('fTipoPgt').value === 'Pix' ? el('fPixChave').value.trim() : ''
+    };
+    let mirroredCount = 0;
+    if(id){
+      const idx = expenses.findIndex(function(x){ return x.id === id; });
+      if(idx > -1){
+        const existingRecurrenceId = expenses[idx].recurrenceId;
+        expenses[idx] = Object.assign({id:id}, data, existingRecurrenceId ? {recurrenceId: existingRecurrenceId} : {});
+      }
+    } else {
+      data.id = uid();
+      expenses.push(data);
+      mirroredCount = mirrorRecorrenteForward(data);
+    }
+    const p = parseVenc(data.vencimento);
+    state.year = p.y; state.month = p.m;
+    closeModal();
+    render();
+    if(mirroredCount > 0){
+      alert('Despesa recorrente espelhada automaticamente para mais ' + mirroredCount + ' mês(es) até dezembro de ' + p.y + '.');
+    }
+  });
+
+  el('btnNew').addEventListener('click', function(){ openModal(null); });
+  el('btnCancel').addEventListener('click', closeModal);
+  el('overlay').addEventListener('click', function(ev){ if(ev.target === el('overlay')) closeModal(); });
+
+  function openMirrorModal(){
+    const targetYear = state.year + 1;
+    const decemberItems = expenses.filter(function(e){
+      const p = parseVenc(e.vencimento);
+      return p.y === state.year && p.m === 12 && e.tipo === 'Recorrente';
+    });
+
+    el('mirrorTargetYear').textContent = targetYear;
+    const list = el('mirrorList');
+
+    if(decemberItems.length === 0){
+      list.innerHTML = '<div class="mirror-empty">Nenhuma despesa recorrente encontrada em dezembro de ' + state.year + '.</div>';
+    } else {
+      let html = '';
+      decemberItems.forEach(function(e){
+        html += '<div class="mirror-row" data-source-id="' + e.id + '">' +
+          '<input type="checkbox" class="mirror-check" checked>' +
+          '<div class="mirror-info">' +
+            '<div class="mirror-fornecedor">' + escapeHtml(e.fornecedor) + '</div>' +
+            '<div class="mirror-meta">' + escapeHtml(e.categoria) + (e.descricao ? ' · ' + escapeHtml(e.descricao) : '') + '</div>' +
+          '</div>' +
+          '<input type="number" class="mirror-valor" step="0.01" min="0" value="' + e.valor + '">' +
+        '</div>';
+      });
+      list.innerHTML = html;
+
+      list.querySelectorAll('.mirror-check').forEach(function(cb){
+        cb.addEventListener('change', function(){
+          cb.closest('.mirror-row').classList.toggle('excluded', !cb.checked);
+        });
+      });
+    }
+
+    el('mirrorOverlay').classList.add('open');
+  }
+
+  function closeMirrorModal(){
+    el('mirrorOverlay').classList.remove('open');
+  }
+
+  el('btnMirrorNextYear').addEventListener('click', openMirrorModal);
+  el('btnMirrorCancel').addEventListener('click', closeMirrorModal);
+  el('mirrorOverlay').addEventListener('click', function(ev){ if(ev.target === el('mirrorOverlay')) closeMirrorModal(); });
+
+  el('btnMirrorConfirm').addEventListener('click', function(){
+    const targetYear = state.year + 1;
+    const rows = Array.from(el('mirrorList').querySelectorAll('.mirror-row'));
+    let itemsMirrored = 0;
+    let monthsCreated = 0;
+
+    rows.forEach(function(row){
+      const checkbox = row.querySelector('.mirror-check');
+      if(!checkbox || !checkbox.checked) return;
+      const sourceId = row.getAttribute('data-source-id');
+      const source = expenses.find(function(x){ return x.id === sourceId; });
+      if(!source) return;
+
+      const adjustedValor = parseFloat(row.querySelector('.mirror-valor').value) || 0;
+      const p = parseVenc(source.vencimento);
+
+      if(!source.recurrenceId){ source.recurrenceId = uid(); }
+      if(entryExists(source.fornecedor, source.categoria, adjustedValor, targetYear, 1, source.recurrenceId)) return;
+
+      const januaryEntry = {
+        id: uid(),
+        fornecedor: source.fornecedor,
+        descricao: source.descricao,
+        categoria: source.categoria,
+        tipo: 'Recorrente',
+        parcela: '',
+        vencimento: buildDateISO(targetYear, 1, p.d),
+        valor: adjustedValor,
+        cartao: source.cartao,
+        titular: source.titular,
+        tipoPgt: source.tipoPgt || '',
+        pixChave: source.pixChave || '',
+        recurrenceId: source.recurrenceId
+      };
+      expenses.push(januaryEntry);
+      itemsMirrored++;
+      monthsCreated += 1 + mirrorRecorrenteForward(januaryEntry);
+    });
+
+    closeMirrorModal();
+    if(itemsMirrored > 0){
+      state.year = targetYear;
+      state.month = 1;
+    }
+    render();
+    if(itemsMirrored > 0){
+      alert(itemsMirrored + ' despesa(s) espelhada(s) para ' + targetYear + ' (' + monthsCreated + ' lançamentos criados no total).');
+    }
+  });
+
+  el('searchBox').addEventListener('input', function(){
+    state.search = el('searchBox').value;
+    renderTable();
+  });
+
+  el('categoryFilter').addEventListener('change', function(){
+    state.category = el('categoryFilter').value;
+    renderTable();
+  });
+
+  el('yearInput').addEventListener('change', function(){
+    const y = parseInt(el('yearInput').value, 10);
+    if(!isNaN(y)){ state.year = y; render(); }
+  });
+  el('yearPrev').addEventListener('click', function(){ state.year -= 1; render(); });
+  el('yearNext').addEventListener('click', function(){ state.year += 1; render(); });
+
+  /* ---------- Importar Fatura (Excel) — Cartão PF ---------- */
+  const FATURA_FILTER_NAME = 'RAPHAEL';
+
+  function toTitleCase(str){
+    return String(str||'').trim().toLowerCase().replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+  }
+
+  function normalizeHeader(str){
+    return String(str||'').trim().toUpperCase()
+      .replace(/Á|À|Â|Ã/g,'A').replace(/É|È|Ê/g,'E').replace(/Í|Ì/g,'I')
+      .replace(/Ó|Ò|Õ|Ô/g,'O').replace(/Ú|Ù/g,'U').replace(/Ç/g,'C');
+  }
+
+  function findFaturaSheet(workbook){
+    const nameMatch = workbook.SheetNames.find(function(n){ return /fatura/i.test(n); });
+    return nameMatch || workbook.SheetNames[0];
+  }
+
+  function parseFaturaWorkbook(workbook){
+    const sheetName = findFaturaSheet(workbook);
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+
+    // Locate the header row (must contain FORNECEDOR and PRECO UNITARIO)
+    let headerRowIdx = -1;
+    let colMap = {};
+    for(let i = 0; i < rows.length; i++){
+      const normalized = rows[i].map(normalizeHeader);
+      if(normalized.indexOf('FORNECEDOR') > -1 && normalized.some(function(c){ return c.indexOf('PRECO') === 0; })){
+        headerRowIdx = i;
+        normalized.forEach(function(colName, idx){
+          if(colName) colMap[colName] = idx;
+        });
+        break;
+      }
+    }
+    if(headerRowIdx === -1){
+      throw new Error('Não foi possível localizar a linha de cabeçalho (procurando por "FORNECEDOR" e "PREÇO UNITÁRIO") na planilha.');
+    }
+
+    const idxTipoDespesa = colMap['TIPO DE DESPESA'];
+    const idxFornecedor = colMap['FORNECEDOR'];
+    const idxDescricao = colMap['DESCRICAO'];
+    const idxPrecoKey = Object.keys(colMap).find(function(k){ return k.indexOf('PRECO') === 0; });
+    const idxPrecoCol = idxPrecoKey !== undefined ? colMap[idxPrecoKey] : undefined;
+    const idxParcela = colMap['PARCELA'];
+
+    if(idxTipoDespesa === undefined || idxFornecedor === undefined || idxPrecoCol === undefined){
+      throw new Error('A planilha não tem todas as colunas esperadas (Tipo de Despesa, Fornecedor, Preço Unitário).');
+    }
+
+    // Locate a reference invoice date: first Date object found in the rows before the header
+    let refDate = null;
+    for(let i = 0; i < headerRowIdx; i++){
+      for(let j = 0; j < rows[i].length; j++){
+        if(rows[i][j] instanceof Date){ refDate = rows[i][j]; break; }
+      }
+      if(refDate) break;
+    }
+    const refYear = refDate ? refDate.getFullYear() : state.year;
+    const refMonth = refDate ? (refDate.getMonth() + 1) : state.month;
+
+    const matched = [];
+    for(let i = headerRowIdx + 1; i < rows.length; i++){
+      const row = rows[i];
+      const fornecedorVal = String(row[idxFornecedor]||'').trim();
+      if(!fornecedorVal) continue;
+      const tipoDespesaVal = String(row[idxTipoDespesa]||'').trim();
+      if(tipoDespesaVal.toUpperCase().indexOf(FATURA_FILTER_NAME) === -1) continue;
+
+      const descricaoVal = idxDescricao !== undefined ? String(row[idxDescricao]||'').trim() : '';
+      const precoRaw = row[idxPrecoCol];
+      const valorNum = typeof precoRaw === 'number' ? precoRaw : parseFloat(String(precoRaw||'0').replace(',','.')) || 0;
+      const parcelaRaw = idxParcela !== undefined ? String(row[idxParcela]||'').trim() : '';
+      const parcelaUpper = parcelaRaw.toUpperCase();
+
+      let tipo, parcela;
+      if(parcelaUpper === 'RECORRENTE'){
+        tipo = 'Recorrente'; parcela = '';
+      } else if(parcelaUpper === 'UNICA' || parcelaUpper === 'ÚNICA'){
+        tipo = 'Variável'; parcela = 'Única';
+      } else {
+        tipo = 'Variável'; parcela = parcelaRaw;
+      }
+
+      matched.push({
+        id: uid(),
+        fornecedor: fornecedorVal,
+        descricao: descricaoVal,
+        categoria: 'Despesas Gerais',
+        tipo: tipo,
+        parcela: parcela,
+        vencimento: buildDateISO(refYear, refMonth, 10),
+        valor: Math.round(valorNum * 100) / 100,
+        cartao: true,
+        titular: toTitleCase(tipoDespesaVal),
+        tipoPgt: '',
+        pixChave: '',
+        recurrenceId: tipo === 'Recorrente' ? uid() : ''
+      });
+    }
+
+    return { items: matched, year: refYear, month: refMonth };
+  }
+
+  function importFaturaFile(file){
+    if(typeof XLSX === 'undefined'){
+      alert('Não foi possível carregar o recurso de leitura de planilhas. Verifique sua conexão com a internet e tente novamente.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const workbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const result = parseFaturaWorkbook(workbook);
+        if(result.items.length === 0){
+          alert('Nenhum lançamento com "' + FATURA_FILTER_NAME + '" foi encontrado nessa planilha.');
+          return;
+        }
+        // Replace existing card entries for the target month/year with the freshly imported set
+        const before = expenses.length;
+        expenses = expenses.filter(function(x){
+          const p = parseVenc(x.vencimento);
+          return !(x.cartao && p.y === result.year && p.m === result.month);
+        });
+        const removed = before - expenses.length;
+        expenses = expenses.concat(result.items);
+        let mirroredMonths = 0;
+        result.items.forEach(function(item){
+          mirroredMonths += mirrorRecorrenteForward(item);
+        });
+
+        el('cartaoTitular').value = result.items[0].titular;
+        state.year = result.year;
+        state.month = result.month;
+        render();
+
+        alert(result.items.length + ' despesa(s) do cartão importada(s) para ' + MONTH_FULL[result.month-1] + '/' + result.year +
+          (removed > 0 ? ' (substituindo ' + removed + ' lançamento(s) de cartão que já existiam nesse mês)' : '') +
+          (mirroredMonths > 0 ? '. As recorrentes também foram projetadas para os meses seguintes até dezembro.' : '.'));
+      }catch(err){
+        alert('Não foi possível importar a fatura: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  el('btnImportFatura').addEventListener('click', function(){ el('faturaFileInput').click(); });
+  el('faturaFileInput').addEventListener('change', function(ev){
+    const file = ev.target.files[0];
+    if(file) importFaturaFile(file);
+    el('faturaFileInput').value = '';
+  });
+
+  /* ---------- Print / Screenshot (JPEG) ---------- */
+  function buildPrintContent(){
+    const monthList = expensesForMonth();
+    const total = monthList.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const cartaoList = monthList.filter(function(e){ return e.cartao; });
+    const cartaoTotalVal = cartaoList.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const cartaoTitularVal = el('cartaoTitular').value.trim() || 'Cartão de Crédito';
+    const ceoNameVal = el('ceoName').value.trim() || 'Nome do CEO';
+
+    const { total: donutTotal, segments } = computeCategorySegments(monthList);
+    const donutSvg = donutTotal > 0 ? buildDonutSvgCircles(segments) : '';
+    const legendHtml = donutTotal > 0 ? buildLegendRows(segments) : '<div class="donut-empty">Sem despesas neste mês.</div>';
+
+    const cartaoBodyHtml = cartaoList.length === 0
+      ? '<div class="card-empty">Nenhuma despesa de cartão neste mês.</div>'
+      : '<table class="card-table"><thead><tr><th>Fornecedor</th><th>Tipo / Parcela</th><th>Vencimento</th><th style="text-align:right;">Valor</th></tr></thead><tbody>' +
+          buildCardTableRows(cartaoList) + '</tbody></table>';
+
+    const html =
+      '<div class="print-header">' +
+        '<div class="bar"></div>' +
+        '<h1>Painel Financeiro Pessoal</h1>' +
+      '</div>' +
+      '<div class="print-subtitle"><strong>' + escapeHtml(ceoNameVal) + '</strong> — Fechamento Bancário, Compromissos Financeiros e Perspectiva de Caixa</div>' +
+      '<div class="print-section-title">Visão Consolidada — ' + MONTH_FULL[state.month-1] + ' ' + state.year + '</div>' +
+      '<div class="print-cards">' +
+        '<div class="print-card"><div class="label">Saídas Projetadas do Mês</div><div class="value" style="color:var(--red);">' + fmtCurrency(total) + '</div></div>' +
+      '</div>' +
+      '<div class="card-widget" style="margin-bottom:24px;">' +
+        '<div class="card-widget-head">' +
+          '<div class="title">💳 Cartão PF — ' + escapeHtml(cartaoTitularVal) + '</div>' +
+          '<div><div class="total-label">Total do Mês</div><div class="total-value">' + fmtCurrency(cartaoTotalVal) + '</div></div>' +
+        '</div>' +
+        cartaoBodyHtml +
+      '</div>' +
+      '<div class="print-section-title">Composição por Categoria</div>' +
+      '<div class="print-donut-wrap">' +
+        '<svg class="donut-svg" viewBox="0 0 180 180" style="width:170px;height:170px;flex:0 0 auto;">' + donutSvg + '</svg>' +
+        '<div class="legend" style="flex:1;">' + legendHtml + '</div>' +
+      '</div>' +
+      '<div class="print-footer">Gerado em ' + new Date().toLocaleDateString('pt-BR') + '</div>';
+
+    el('printCapture').innerHTML = html;
+  }
+
+  function takeScreenshot(){
+    if(typeof html2canvas === 'undefined'){
+      alert('Não foi possível carregar o recurso de captura de imagem. Verifique sua conexão com a internet e tente novamente.');
+      return;
+    }
+    buildPrintContent();
+    const target = el('printCapture');
+    setTimeout(function(){
+      html2canvas(target, { backgroundColor: '#ffffff', scale: 2, useCORS: true }).then(function(canvas){
+        canvas.toBlob(function(blob){
+          if(!blob){ alert('Não foi possível gerar a imagem.'); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'painel-financeiro-' + MONTH_NAMES[state.month-1].toLowerCase() + '-' + state.year + '.jpg';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 'image/jpeg', 0.92);
+      }).catch(function(err){
+        alert('Não foi possível gerar a imagem: ' + err.message);
+      });
+    }, 50);
+  }
+
+  el('btnScreenshot').addEventListener('click', takeScreenshot);
+
+  /* ---------- Export / Import ---------- */
+  el('btnExport').addEventListener('click', function(){
+    const blob = new Blob([JSON.stringify(expenses, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'despesas-pessoais-' + state.year + '-' + String(state.month).padStart(2,'0') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+  el('btnImportTrigger').addEventListener('click', function(){ el('btnImport').click(); });
+  el('btnImport').addEventListener('change', function(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const parsed = JSON.parse(e.target.result);
+        if(Array.isArray(parsed)){
+          expenses = parsed;
+          render();
+          alert('Dados importados com sucesso.');
+        } else {
+          alert('Arquivo inválido: esperado um array de despesas.');
+        }
+      }catch(err){
+        alert('Não foi possível ler o arquivo JSON.');
+      }
+    };
+    reader.readAsText(file);
+    el('btnImport').value = '';
+  });
+
+  el('ceoName').addEventListener('input', saveToStorage);
+  el('cartaoTitular').addEventListener('input', saveToStorage);
+  el('btnClearStorage').addEventListener('click', clearStorage);
+
+  loadFromStorage();
+  render();
+})();
+</script>
+
+</body>
+</html>
