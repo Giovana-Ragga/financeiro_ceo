@@ -303,7 +303,7 @@
   }
   .table-count .checked-count{color:var(--green); font-weight:700;}
   .table-scroll{
-    max-height:500px;
+    max-height:320px;
     overflow-y:auto;
     overflow-x:hidden;
     border-radius:8px;
@@ -500,6 +500,23 @@
   </section>
 
   <section>
+    <div class="card-widget">
+      <div class="card-widget-head">
+        <div class="title">💳 Cartão PF — <input id="cartaoTitular" placeholder="Titular do Cartão" value="Luiz Otávio"></div>
+        <div class="card-widget-actions">
+          <button class="btn-import-fatura" id="btnImportFatura" title="Importar fatura (.xlsx) — só entram os lançamentos com &quot;RAPHAEL&quot; na coluna Tipo de Despesa">📄 Importar Fatura</button>
+          <input type="file" id="faturaFileInput" accept=".xlsx,.xls">
+          <div style="text-align:right;">
+            <div class="total-label">Total do Mês</div>
+            <div class="total-value" id="cartaoTotal">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+      <div id="cartaoBody"></div>
+    </div>
+  </section>
+
+  <section>
     <div class="main-grid">
 
       <div class="panel">
@@ -534,23 +551,6 @@
         </div>
       </div>
 
-    </div>
-  </section>
-
-  <section>
-    <div class="card-widget">
-      <div class="card-widget-head">
-        <div class="title">💳 Cartão PF — <input id="cartaoTitular" placeholder="Titular do Cartão" value="Luiz Otávio"></div>
-        <div class="card-widget-actions">
-          <button class="btn-import-fatura" id="btnImportFatura" title="Importar fatura (.xlsx) — só entram os lançamentos com &quot;RAPHAEL&quot; na coluna Tipo de Despesa">📄 Importar Fatura</button>
-          <input type="file" id="faturaFileInput" accept=".xlsx,.xls">
-          <div style="text-align:right;">
-            <div class="total-label">Total do Mês</div>
-            <div class="total-value" id="cartaoTotal">R$ 0,00</div>
-          </div>
-        </div>
-      </div>
-      <div id="cartaoBody"></div>
     </div>
   </section>
 
