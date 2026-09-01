@@ -1,0 +1,188 @@
+name: Apply finance dashboard patch
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "github.event.head_commit.message != 'chore: apply finance dashboard patch'"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''      <div class="checkbox-row">
+        <input type="checkbox" id="fCartao">
+        <label for="fCartao">Despesa no cartão de crédito</label>
+      </div>'''
+          new = old + '''
+      <div class="checkbox-row" id="applyFutureField" style="display:none;">
+        <input type="checkbox" id="fAplicarFuturos">
+        <label for="fAplicarFuturos">Aplicar alteração aos meses futuros</label>
+      </div>'''
+          if old not in s: raise SystemExit('UI anchor not found')
+          s = s.replace(old, new, 1)
+          old = """    el('pixChaveField').style.display = 'none';
+
+    if(id){"""
+          new = """    el('pixChaveField').style.display = 'none';
+    el('applyFutureField').style.display = 'none';
+    el('fAplicarFuturos').checked = false;
+
+    if(id){"""
+          if old not in s: raise SystemExit('modal reset anchor not found')
+          s = s.replace(old, new, 1)
+          old = """        el('pixChaveField').style.display = e.tipoPgt === 'Pix' ? 'block' : 'none';
+      }"""
+          new = """        el('pixChaveField').style.display = e.tipoPgt === 'Pix' ? 'block' : 'none';
+        el('applyFutureField').style.display = e.tipo === 'Recorrente' ? 'flex' : 'none';
+      }"""
+          if old not in s: raise SystemExit('edit modal anchor not found')
+          s = s.replace(old, new, 1)
+          old = """    let mirroredCount = 0;
+    if(id){
+      const idx = expenses.findIndex(function(x){ return x.id === id; });
+      if(idx > -1){
+        const existingRecurrenceId = expenses[idx].recurrenceId;
+        expenses[idx] = Object.assign({id:id}, data, existingRecurrenceId ? {recurrenceId: existingRecurrenceId} : {});
+      }
+    } else {"""
+          new = """    let mirroredCount = 0;
+    if(id){
+      const idx = expenses.findIndex(function(x){ return x.id === id; });
+      if(idx > -1){
+        const original = Object.assign({}, expenses[idx]);
+        const existingRecurrenceId = original.recurrenceId || uid();
+        expenses[idx] = Object.assign({id:id}, data, {recurrenceId: existingRecurrenceId});
+        if(el('fAplicarFuturos').checked && data.tipo === 'Recorrente'){
+          mirroredCount = applyEditForward(expenses[idx], original);
+        }
+      }
+    } else {"""
+          if old not in s: raise SystemExit('submit anchor not found')
+          s = s.replace(old, new, 1)
+          marker = "  function mirrorRecorrenteForward(source){\n"
+          helper = '''  // Applies an edited recurring expense to matching future months in the same year.
+  // Existing future entries are updated; missing months are created.
+  function applyEditForward(source, original){
+    if(source.tipo !== 'Recorrente') return 0;
+    const p = parseVenc(source.vencimento);
+    let changed = 0;
+    const recurrenceId = source.recurrenceId;
+    for(let m = p.m + 1; m <= 12; m++){
+      const candidates = expenses.filter(function(e){
+        const ep = parseVenc(e.vencimento);
+        if(ep.y !== p.y || ep.m !== m) return false;
+        if(recurrenceId && e.recurrenceId === recurrenceId) return true;
+        return e.fornecedor === original.fornecedor &&
+               e.categoria === original.categoria &&
+               e.tipo === 'Recorrente' &&
+               !!e.cartao === !!original.cartao &&
+               (e.titular||'') === (original.titular||'') &&
+               ep.d === p.d;
+      });
+      if(candidates.length){
+        const originalDescription = original.descricao || '';
+        const exactDescription = candidates.filter(function(e){ return (e.descricao||'') === originalDescription; });
+        const pool = exactDescription.length ? exactDescription : candidates;
+        const target = pool.slice().sort(function(a,b){
+          return Math.abs(Number(a.valor||0) - Number(original.valor||0)) -
+                 Math.abs(Number(b.valor||0) - Number(original.valor||0));
+        })[0];
+        Object.assign(target, {
+          fornecedor: source.fornecedor,
+          descricao: source.descricao,
+          categoria: source.categoria,
+          tipo: 'Recorrente',
+          parcela: '',
+          vencimento: buildDateISO(p.y, m, p.d),
+          valor: source.valor,
+          cartao: source.cartao,
+          titular: source.titular,
+          tipoPgt: source.tipoPgt || '',
+          pixChave: source.pixChave || '',
+          recurrenceId: recurrenceId
+        });
+        changed++;
+      } else {
+        expenses.push({
+          id: uid(),
+          fornecedor: source.fornecedor,
+          descricao: source.descricao,
+          categoria: source.categoria,
+          tipo: 'Recorrente',
+          parcela: '',
+          vencimento: buildDateISO(p.y, m, p.d),
+          valor: source.valor,
+          cartao: source.cartao,
+          titular: source.titular,
+          tipoPgt: source.tipoPgt || '',
+          pixChave: source.pixChave || '',
+          recurrenceId: recurrenceId
+        });
+        changed++;
+      }
+    }
+    return changed;
+  }
+
+'''
+          if marker not in s: raise SystemExit('mirror function anchor not found')
+          s = s.replace(marker, helper + marker, 1)
+          old = """    if(mirroredCount > 0){
+      alert('Despesa recorrente espelhada automaticamente para mais ' + mirroredCount + ' mês(es) até dezembro de ' + p.y + '.');
+    }"""
+          new = """    if(mirroredCount > 0){
+      if(id && el('fAplicarFuturos').checked){
+        alert('Alteração aplicada aos meses futuros: ' + mirroredCount + ' lançamento(s) atualizado(s)/criado(s) até dezembro de ' + p.y + '.');
+      } else {
+        alert('Despesa recorrente espelhada automaticamente para mais ' + mirroredCount + ' mês(es) até dezembro de ' + p.y + '.');
+      }
+    }"""
+          if old not in s: raise SystemExit('alert anchor not found')
+          s = s.replace(old, new, 1)
+          start = s.index("    const expensesJson = escapeForScriptTag(JSON.stringify(expenses));", s.index('function downloadUpdatedIndex'))
+          end = s.index("    const ceoNameVal = el('ceoName').value.trim();", start)
+          export_patch = """    const expensesJson = escapeForScriptTag(JSON.stringify(expenses));
+    const expensesPattern = /let expenses\\s*=\\s*\\[[\\s\\S]*?\\];/;
+    if(!expensesPattern.test(html)){
+      alert('Não foi possível localizar os dados financeiros no arquivo original.');
+      return;
+    }
+    html = html.replace(expensesPattern, 'let expenses = ' + expensesJson + ';');
+
+"""
+          s = s[:start] + export_patch + s[end:]
+          p.write_text(s, encoding='utf-8')
+          print('patched index.html')
+      - name: Validate JavaScript
+        run: |
+          python3 - <<'PYTHON'
+          import re
+          s=open('index.html',encoding='utf-8').read()
+          m=re.search(r'<script>\n(.*?)\n</script>',s,re.S)
+          open('/tmp/dashboard.js','w',encoding='utf-8').write(m.group(1))
+          PYTHON
+          node --check /tmp/dashboard.js
+      - name: Commit patch
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --stat
+          git commit -m "chore: apply finance dashboard patch"
+          git push origin main
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          rm -f .github/workflows/apply-financeiro-patch.yml
+          git config user.name "GitHub Actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/apply-financeiro-patch.yml
+          git commit -m "chore: remove temporary patch workflow"
+          git push origin main
