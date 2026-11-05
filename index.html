@@ -432,6 +432,71 @@
   .print-donut-wrap{display:flex; align-items:center; gap:26px;}
   .print-footer{margin-top:26px; font-size:10.5px; color:var(--muted-2); text-align:center;}
 
+
+  /* ===== Mobile (somente dentro de .app; o print do CEO não é afetado) ===== */
+  @media (max-width:640px){
+    html,body{overflow-x:hidden;}
+    .app{padding:14px 12px 40px;}
+    .app header{flex-direction:column; align-items:stretch; gap:10px;}
+    .app header h1{font-size:21px;}
+    .app .subtitle-row{flex-wrap:wrap; font-size:11.5px;}
+    .app .header-actions{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:8px;}
+    .app .header-actions .btn{grid-column:span 2; width:100%; min-height:42px; justify-content:center; white-space:nowrap;}
+    .app .header-actions #btnPublish{order:1;}
+    .app .header-actions #btnNew{order:2;}
+    .app .header-actions .toolbar-sep{display:none;}
+    .app .header-actions .icon-btn,.app .header-actions .storage-indicator{order:3;}
+    .app .header-actions .icon-btn{width:100%; height:40px; background:rgba(28,43,60,.05); font-size:16px;}
+    .app .header-actions .storage-indicator{display:none;}
+
+    .app .composition-bar{flex-direction:column; align-items:stretch; gap:10px;}
+    .app section,.app .composition-bar,.app .composition-bar > *{min-width:0; max-width:100%;}
+    .app .year-box{align-self:flex-start;}
+    .app .month-tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px;}
+    .app .month-tab{flex:0 0 auto; padding:9px 14px;}
+    .app .summary-grid{grid-template-columns:1fr 1fr; gap:10px;}
+    .app .summary-card{padding:14px 12px;}
+    .app .summary-card .value{font-size:19px;}
+
+    .app .card-widget-head{flex-direction:column; align-items:stretch; gap:10px; padding:14px;}
+    .app .card-widget-head .title{flex-wrap:wrap;}
+    .app .card-widget-head .title input{flex:1; min-width:140px; font-size:16px;}
+    .app .card-widget-actions{justify-content:space-between; flex-wrap:wrap;}
+    .app .card-table th,.app .card-table td{padding:9px 12px; font-size:12px;}
+    .app .card-table-scroll{overflow-x:hidden;}
+    .app .card-table th:nth-child(2),.app .card-table td:nth-child(2){display:none;}
+
+    .app .panel{padding:14px;}
+    .app .table-panel-head{flex-wrap:wrap; gap:8px;}
+    .app .search-box,.app .category-filter{flex:1 1 100%; width:100%; font-size:16px; min-height:42px;}
+    .app .table-scroll{max-height:none; overflow:visible;}
+
+    /* tabela -> cartões */
+    .app table.expenses,.app table.expenses tbody{display:block; width:100%;}
+    .app table.expenses thead{display:none;}
+    .app table.expenses tr{
+      display:grid; grid-template-columns:minmax(0,1fr) auto auto; box-sizing:border-box; grid-template-areas:"forn forn val" "cat cat acts" "tipo pgt venc";
+      gap:6px 10px; padding:12px; margin-bottom:10px; background:var(--card);
+      border:1px solid var(--border); border-radius:12px;
+    }
+    .app table.expenses tr.empty-row{display:block; text-align:center;}
+    .app table.expenses td{display:block; padding:0; border:none; width:auto;}
+    .app table.expenses td:nth-child(1){display:none;}
+    .app table.expenses td:nth-child(2){grid-area:forn; min-width:0;}
+    .app table.expenses td:nth-child(7){grid-area:val; font-size:16px; text-align:right; white-space:nowrap;}
+    .app table.expenses td:nth-child(3){grid-area:cat; align-self:center;}
+    .app table.expenses td:nth-child(4){grid-area:tipo; align-self:center;}
+    .app table.expenses td:nth-child(5){grid-area:pgt; align-self:center; font-size:12px;}
+    .app table.expenses td:nth-child(6){grid-area:venc; text-align:right; font-size:12px; color:var(--muted); align-self:center;}
+    .app table.expenses td:nth-child(8){grid-area:acts; align-self:center;}
+    .app table.expenses .row-actions{display:flex; gap:8px; justify-content:flex-end;}
+    .app table.expenses .row-actions button{min-width:40px; min-height:40px; font-size:16px;}
+
+    .app .donut-svg{width:200px; height:200px;}
+    .app .legend-val{width:auto;}
+    .app input,.app select,.app textarea{font-size:16px;}
+  }
+
   @media (max-width:820px){
     .main-grid{grid-template-columns:1fr;}
     .summary-grid{grid-template-columns:1fr;}
