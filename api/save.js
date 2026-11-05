@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     const updatedAt = new Date().toISOString();
     const content = JSON.stringify({updatedAt, ceoName:b.ceoName||'', cartaoTitular:b.cartaoTitular||'', expenses:b.expenses, history:Array.isArray(b.history)?b.history.slice(-1000):[]});
     const put = await fetch(api, {method:'PUT', headers: gh(token), body: JSON.stringify({
-      message:`Atualiza despesas (${b.expenses.length}) por ${String(b.user||'painel').slice(0,60).replace(/[\r\n]/g,' ')} - ${updatedAt}`, content: Buffer.from(content,'utf8').toString('base64'), branch: BRANCH, sha })});
+      message:`Atualiza despesas (${b.expenses.length}) - ${updatedAt}`, content: Buffer.from(content,'utf8').toString('base64'), branch: BRANCH, sha })});
     if (!put.ok) return res.status(502).json({error:'Falha ao gravar no GitHub ('+put.status+')'});
     return res.status(200).json({ok:true, updatedAt});
   } catch (e) { return res.status(500).json({error:e.message}); }

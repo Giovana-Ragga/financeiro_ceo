@@ -541,11 +541,9 @@
     </div>
     <div class="header-actions">
       <span class="storage-indicator" id="storageIndicator" title="Salvo neste navegador">💾</span>
-      <button class="icon-btn" id="btnExport" title="Exportar JSON">⬇</button>
-      <button class="icon-btn" id="btnImportTrigger" title="Importar JSON">⬆</button>
-      <input type="file" id="btnImport" accept="application/json">
       <button class="icon-btn" id="btnClearStorage" title="Descartar alterações não publicadas">🗑</button>
       <button class="icon-btn" id="btnHistory" title="Histórico de alterações">📜</button>
+      <button class="icon-btn" id="btnWhats" title="Gerar texto para WhatsApp">💬</button>
       <button class="icon-btn" id="btnScreenshot" title="Tirar print do mês (JPEG)">📸</button>
       <button class="btn btn-primary btn-compact" id="btnPublish" title="Publicar no GitHub/Vercel para todos verem">🚀 Publicar</button>
       <span class="toolbar-sep"></span>
@@ -617,7 +615,7 @@
           <input class="search-box" id="searchBox" placeholder="Buscar fornecedor ou categoria...">
           <span class="table-count" id="tableCount"></span>
           <select class="category-filter" id="categoryFilter"></select>
-          <select class="category-filter" id="statusFilter"><option value="">Todos os status</option><option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="Conferido">Conferido</option></select>
+          <select class="category-filter" id="statusFilter"><option value="">Todos os status</option><option value="Conferido">Conferido</option><option value="Pendente">Pendente</option><option value="Pago">Pago</option></select>
         </div>
         <div class="table-scroll">
         <table class="expenses">
@@ -664,7 +662,7 @@
       <input type="hidden" id="expenseId">
       <div class="field-row">
         <div class="field"><label>Status</label>
-          <select id="fStatus"><option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="Conferido">Conferido</option></select>
+          <select id="fStatus"><option value="Conferido">Conferido</option><option value="Pendente">Pendente</option><option value="Pago">Pago</option></select>
         </div>
       </div>
       <div class="field">
@@ -757,6 +755,18 @@
   </div>
 </div>
 
+<div class="overlay" id="whatsOverlay">
+  <div class="modal history-modal">
+    <h2>Texto para WhatsApp</h2>
+    <textarea id="whatsText" style="width:100%; min-height:48vh; font-family:inherit; font-size:14px; line-height:1.45; padding:12px; border:1px solid var(--border); border-radius:10px;"></textarea>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="btnWhatsClose">Fechar</button>
+      <button type="button" class="btn" id="btnWhatsOpen">Abrir no WhatsApp</button>
+      <button type="button" class="btn btn-primary" id="btnWhatsCopy">Copiar texto</button>
+    </div>
+  </div>
+</div>
+
 <div id="printCapture"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -791,7 +801,7 @@
   let history = [];
 
   const CATEGORIAS = ['Aluguel','Condomínio','Faculdade','Plano de Saúde','Telefonia','Imposto','Mesada','Ajuda de Custo','Despesas Gerais'];
-  const STATUS_LIST = ['Pendente','Pago','Conferido'];
+  const STATUS_LIST = ['Conferido','Pendente','Pago'];
   const VAR_THRESHOLD = 0.10;
   function normKey(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
   function canonCategoria(c){
@@ -808,18 +818,8 @@
   }
 
   /* ---------- Histórico de alterações ---------- */
-  const USER_KEY = 'painelFinanceiroPessoal:user';
-  function currentUser(){
-    let u = '';
-    try{ u = localStorage.getItem(USER_KEY) || ''; }catch(e){}
-    if(!u){
-      u = (window.prompt('Seu nome (aparece no histórico de alterações):') || '').trim() || 'Não identificado';
-      try{ localStorage.setItem(USER_KEY, u); }catch(e){}
-    }
-    return u;
-  }
   function logChange(acao, texto){
-    history.push({ ts: new Date().toISOString(), user: currentUser(), acao: acao, texto: texto });
+    history.push({ ts: new Date().toISOString(), acao: acao, texto: texto });
     if(history.length > 1000) history = history.slice(-1000);
   }
   const FIELD_LABELS = {fornecedor:'Fornecedor', descricao:'Descrição', categoria:'Categoria', tipo:'Tipo', parcela:'Parcela', vencimento:'Vencimento', valor:'Valor', cartao:'Cartão', titular:'Titular', tipoPgt:'Tipo de Pgt', pixChave:'Chave Pix', status:'Status'};
@@ -936,7 +936,7 @@
     try{
       const r = await fetch('/api/save', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value, history: history, user: currentUser(),
+        body: JSON.stringify({ expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value, history: history,
           baseUpdatedAt: remoteUpdatedAt, force: !!force })
       });
       const j = await r.json().catch(()=>({}));
@@ -1205,9 +1205,9 @@
     list.forEach(function(e){ const s = sum[statusOf(e)]; s[0]++; s[1] += Number(e.valor||0); });
     const nVar = list.filter(function(e){ return variationInfo(e); }).length;
     el('statusSummary').innerHTML = list.length === 0 ? '' :
+      '<span class="chip chip-conf">Conferido: ' + fmtCurrency(sum.Conferido[1]) + ' (' + sum.Conferido[0] + ')</span>' +
       '<span class="chip chip-pend">Pendente: ' + fmtCurrency(sum.Pendente[1]) + ' (' + sum.Pendente[0] + ')</span>' +
       '<span class="chip chip-pago">Pago: ' + fmtCurrency(sum.Pago[1]) + ' (' + sum.Pago[0] + ')</span>' +
-      '<span class="chip chip-conf">Conferido: ' + fmtCurrency(sum.Conferido[1]) + ' (' + sum.Conferido[0] + ')</span>' +
       (nVar ? '<span class="chip chip-var">⚠ ' + nVar + ' recorrente' + (nVar>1?'s':'') + ' com variação ≥ ' + Math.round(VAR_THRESHOLD*100) + '%</span>' : '');
   }
 
@@ -1348,8 +1348,9 @@
     const totalCount = list.length;
     const checkedCount = list.filter(function(e){ return statusOf(e) === 'Conferido'; }).length;
     const pendCount = list.filter(function(e){ return statusOf(e) === 'Pendente'; }).length;
+    const pagoCount = list.filter(function(e){ return statusOf(e) === 'Pago'; }).length;
     el('tableCount').innerHTML = totalCount + ' lançamento' + (totalCount !== 1 ? 's' : '') +
-      ' · ' + pendCount + ' pendente' + (pendCount !== 1 ? 's' : '') + ' · <span class="checked-count">' + checkedCount + ' conferido' + (checkedCount !== 1 ? 's' : '') + '</span>';
+      ' · <span class="checked-count">' + checkedCount + ' conferido' + (checkedCount !== 1 ? 's' : '') + '</span> · ' + pendCount + ' pendente' + (pendCount !== 1 ? 's' : '') + ' · ' + pagoCount + ' pago' + (pagoCount !== 1 ? 's' : '');
 
     const tbody = el('tableBody');
     if(list.length === 0){
@@ -1661,13 +1662,62 @@
     renderTable();
   });
 
+  /* ---------- Texto para WhatsApp ---------- */
+  const PIX_DEPOSITO = '43991061265';
+  const CONTA_DEPOSITO = 'Amiz';
+  const CATEGORY_EMOJI = {'Aluguel':'🏠','Faculdade':'🎓','Condomínio':'🏢','Plano de Saúde':'🏥','Telefonia':'📱','Despesas Gerais':'💼','Ajuda de Custo':'💵','Imposto':'🧾','Mesada':'🍽️'};
+  function money(n){ return fmtCurrency(n).replace(/\u00a0/g,' '); }
+  function buildWhatsText(){
+    const list = expensesForMonth();
+    const mes = MONTH_FULL[state.month-1];
+    const total = list.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const card = list.filter(function(e){ return e.cartao; }).sort(function(a,b){ return Number(b.valor||0) - Number(a.valor||0); });
+    const cardTotal = card.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const titular = el('cartaoTitular').value.trim();
+    const cats = {};
+    list.forEach(function(e){ cats[e.categoria] = (cats[e.categoria]||0) + Number(e.valor||0); });
+    const catLines = Object.keys(cats).sort(function(a,b){ return cats[b] - cats[a]; }).map(function(c){
+      return '- ' + (CATEGORY_EMOJI[c] || '▪️') + ' ' + c + ' — ' + money(cats[c]);
+    });
+    let t = '📊 Fechamento Financeiro – ' + mes + '/' + state.year + '\n\n' +
+      'Segue o fechamento financeiro consolidado do mês de ' + mes.toLowerCase() + '.\n\n' +
+      '📌 Depósitos de despesas\nFavor direcionar os depósitos para a conta da ' + CONTA_DEPOSITO + ':\n\nPIX: ' + PIX_DEPOSITO + '\n\n' +
+      '💰 Total projetado para ' + mes.toLowerCase() + ': ' + money(total) + '\n\n';
+    if(card.length){
+      t += '💳 Detalhamento das despesas no cartão' + (titular ? ' do ' + titular : '') + '\n\n' +
+        '💳 Cartão PF: ' + money(cardTotal) + '\n\n' +
+        card.map(function(e){
+          const desc = e.descricao || (e.tipo === 'Recorrente' ? 'Recorrente' : 'Variável');
+          return '- ' + toTitleCase(e.fornecedor) + ' — ' + desc + (e.tipo === 'Variável' && e.parcela ? ' (parcela ' + e.parcela + ')' : '') + ' — ' + money(e.valor);
+        }).join('\n') + '\n\n';
+    }
+    t += '📊 Composição das despesas projetadas\n\n' + catLines.join('\n') + '\n\n⚠️ Valores sujeitos a atualização';
+    return t;
+  }
+  el('btnWhats').addEventListener('click', function(){
+    el('whatsText').value = buildWhatsText();
+    el('whatsOverlay').classList.add('open');
+  });
+  el('btnWhatsClose').addEventListener('click', function(){ el('whatsOverlay').classList.remove('open'); });
+  el('whatsOverlay').addEventListener('click', function(ev){ if(ev.target === el('whatsOverlay')) el('whatsOverlay').classList.remove('open'); });
+  el('btnWhatsCopy').addEventListener('click', function(){
+    const ta = el('whatsText');
+    const done = function(){ el('btnWhatsCopy').textContent = '✓ Copiado'; setTimeout(function(){ el('btnWhatsCopy').textContent = 'Copiar texto'; }, 1800); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(done, function(){ ta.select(); document.execCommand('copy'); done(); });
+    } else { ta.select(); document.execCommand('copy'); done(); }
+  });
+  el('btnWhatsOpen').addEventListener('click', function(){
+    window.open('https://wa.me/?text=' + encodeURIComponent(el('whatsText').value), '_blank');
+  });
+
   function openHistory(){
     const list = el('historyList');
     list.innerHTML = history.length === 0 ? '<div class="mirror-empty">Nenhuma alteração registrada ainda.</div>' :
       history.slice().reverse().map(function(h){
         const d = new Date(h.ts);
         const when = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        return '<div class="history-item"><div class="meta">' + when + ' · <span class="who">' + escapeHtml(h.user) + '</span> · ' + escapeHtml(h.acao) + '</div>' + escapeHtml(h.texto) + '</div>';
+        return '<div class="history-item"><div class="meta">' + when + ' · <span class="who">' + escapeHtml(h.acao) + '</span>' + (h.user ? ' · ' + escapeHtml(h.user) : '') + '</div>' + escapeHtml(h.texto) + '</div>';
       }).join('');
     el('historyOverlay').classList.add('open');
   }
@@ -1928,42 +1978,6 @@
   el('btnPublish').addEventListener('click', function(){ publish(false); });
 
   el('btnScreenshot').addEventListener('click', takeScreenshot);
-
-  /* ---------- Export / Import ---------- */
-  el('btnExport').addEventListener('click', function(){
-    const blob = new Blob([JSON.stringify(expenses, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'despesas-pessoais-' + state.year + '-' + String(state.month).padStart(2,'0') + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-  el('btnImportTrigger').addEventListener('click', function(){ el('btnImport').click(); });
-  el('btnImport').addEventListener('change', function(ev){
-    const file = ev.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e){
-      try{
-        const parsed = JSON.parse(e.target.result);
-        if(Array.isArray(parsed)){
-          expenses = parsed.map(normalizeExpense);
-          logChange('importou', 'Importou JSON com ' + parsed.length + ' despesa(s)');
-          render();
-          alert('Dados importados com sucesso.');
-        } else {
-          alert('Arquivo inválido: esperado um array de despesas.');
-        }
-      }catch(err){
-        alert('Não foi possível ler o arquivo JSON.');
-      }
-    };
-    reader.readAsText(file);
-    el('btnImport').value = '';
-  });
 
   el('ceoName').addEventListener('input', saveToStorage);
   el('cartaoTitular').addEventListener('input', saveToStorage);
