@@ -353,6 +353,25 @@
   .check-btn.checked:hover{background:#d8f0e0;}
   tr.row-checked{background:var(--green-bg);}
   tr.row-checked:hover{background:var(--green-bg);}
+  .st-pill{display:inline-block; padding:2px 8px; border-radius:20px; font-size:10.5px; font-weight:700; margin-top:3px; cursor:pointer; border:none;}
+  .st-pendente{background:#fdf0d8; color:#a86a00;}
+  .st-pago{background:#e1ecfb; color:#2f5fa8;}
+  .st-conferido{background:var(--green-bg); color:var(--green);}
+  .check-btn.st-pago{color:#2f5fa8; background:#e1ecfb;}
+  tr.row-pago{background:#f4f8fe;}
+  .warn-badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; margin-top:3px;}
+  .dup-badge{background:#fde7e5; color:var(--red);}
+  .var-badge{display:block; font-size:10.5px; font-weight:700; margin-top:2px;}
+  .var-up{color:var(--red);} .var-down{color:var(--green);}
+  .status-summary{display:flex; flex-wrap:wrap; gap:8px; margin:-6px 0 18px; font-size:12.5px;}
+  .status-summary .chip{padding:6px 11px; border-radius:20px; font-weight:600;}
+  .chip-pend{background:#fdf0d8; color:#a86a00;} .chip-pago{background:#e1ecfb; color:#2f5fa8;}
+  .chip-conf{background:var(--green-bg); color:var(--green);} .chip-var{background:#fde7e5; color:var(--red);}
+  .history-modal{max-width:640px; width:100%;}
+  .history-list{max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;}
+  .history-item{border:1px solid var(--border); border-radius:10px; padding:9px 12px; font-size:12.5px;}
+  .history-item .meta{color:var(--muted); font-size:11px; margin-bottom:2px;}
+  .history-item .who{font-weight:700; color:var(--text);}
   .cartao-tag{font-size:10px; color:var(--muted-2); display:flex; align-items:center; gap:3px; margin-top:2px;}
   .empty-row td{text-align:center; color:var(--muted); padding:36px 10px;}
 
@@ -526,6 +545,7 @@
       <button class="icon-btn" id="btnImportTrigger" title="Importar JSON">⬆</button>
       <input type="file" id="btnImport" accept="application/json">
       <button class="icon-btn" id="btnClearStorage" title="Descartar alterações não publicadas">🗑</button>
+      <button class="icon-btn" id="btnHistory" title="Histórico de alterações">📜</button>
       <button class="icon-btn" id="btnScreenshot" title="Tirar print do mês (JPEG)">📸</button>
       <button class="btn btn-primary btn-compact" id="btnPublish" title="Publicar no GitHub/Vercel para todos verem">🚀 Publicar</button>
       <span class="toolbar-sep"></span>
@@ -562,6 +582,7 @@
         <div class="value" id="totalMesValue">R$ 0,00</div>
       </div>
     </div>
+    <div class="status-summary" id="statusSummary"></div>
   </section>
 
   <section>
@@ -596,6 +617,7 @@
           <input class="search-box" id="searchBox" placeholder="Buscar fornecedor ou categoria...">
           <span class="table-count" id="tableCount"></span>
           <select class="category-filter" id="categoryFilter"></select>
+          <select class="category-filter" id="statusFilter"><option value="">Todos os status</option><option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="Conferido">Conferido</option></select>
         </div>
         <div class="table-scroll">
         <table class="expenses">
@@ -640,6 +662,11 @@
     <h2 id="modalTitle">Nova Despesa</h2>
     <form id="expenseForm">
       <input type="hidden" id="expenseId">
+      <div class="field-row">
+        <div class="field"><label>Status</label>
+          <select id="fStatus"><option value="Pendente">Pendente</option><option value="Pago">Pago</option><option value="Conferido">Conferido</option></select>
+        </div>
+      </div>
       <div class="field">
         <label>Fornecedor</label>
         <input type="text" id="fFornecedor" required="">
@@ -651,8 +678,7 @@
       <div class="field-row">
         <div class="field">
           <label>Categoria</label>
-          <input type="text" id="fCategoria" list="categoriaList" required="">
-          <datalist id="categoriaList"></datalist>
+          <select id="fCategoria" required=""></select>
         </div>
         <div class="field">
           <label>Tipo</label>
@@ -723,6 +749,14 @@
   </div>
 </div>
 
+<div class="overlay" id="historyOverlay">
+  <div class="modal history-modal">
+    <h2>Histórico de alterações</h2>
+    <div class="history-list" id="historyList"></div>
+    <div class="modal-actions"><button type="button" class="btn" id="btnHistoryClose">Fechar</button></div>
+  </div>
+</div>
+
 <div id="printCapture"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -754,20 +788,107 @@
   const MONTH_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   let expenses = [];
+  let history = [];
+
+  const CATEGORIAS = ['Aluguel','Condomínio','Faculdade','Plano de Saúde','Telefonia','Imposto','Mesada','Ajuda de Custo','Despesas Gerais'];
+  const STATUS_LIST = ['Pendente','Pago','Conferido'];
+  const VAR_THRESHOLD = 0.10;
+  function normKey(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+  function canonCategoria(c){
+    const k = normKey(c);
+    for(let i=0;i<CATEGORIAS.length;i++){ if(normKey(CATEGORIAS[i]) === k) return CATEGORIAS[i]; }
+    return String(c||'').trim() || 'Despesas Gerais';
+  }
+  function statusOf(e){ return e.status || (e.conferido ? 'Conferido' : 'Pendente'); }
+  function normalizeExpense(e){
+    e.categoria = canonCategoria(e.categoria);
+    e.status = statusOf(e);
+    e.conferido = e.status === 'Conferido';
+    return e;
+  }
+
+  /* ---------- Histórico de alterações ---------- */
+  const USER_KEY = 'painelFinanceiroPessoal:user';
+  function currentUser(){
+    let u = '';
+    try{ u = localStorage.getItem(USER_KEY) || ''; }catch(e){}
+    if(!u){
+      u = (window.prompt('Seu nome (aparece no histórico de alterações):') || '').trim() || 'Não identificado';
+      try{ localStorage.setItem(USER_KEY, u); }catch(e){}
+    }
+    return u;
+  }
+  function logChange(acao, texto){
+    history.push({ ts: new Date().toISOString(), user: currentUser(), acao: acao, texto: texto });
+    if(history.length > 1000) history = history.slice(-1000);
+  }
+  const FIELD_LABELS = {fornecedor:'Fornecedor', descricao:'Descrição', categoria:'Categoria', tipo:'Tipo', parcela:'Parcela', vencimento:'Vencimento', valor:'Valor', cartao:'Cartão', titular:'Titular', tipoPgt:'Tipo de Pgt', pixChave:'Chave Pix', status:'Status'};
+  function fmtField(k, v){
+    if(k === 'valor') return fmtCurrency(v);
+    if(k === 'vencimento') return fmtDateBR(v);
+    if(k === 'cartao') return v ? 'sim' : 'não';
+    return (v === '' || v == null) ? '—' : String(v);
+  }
+  function diffExpense(a, b){
+    const out = [];
+    Object.keys(FIELD_LABELS).forEach(function(k){
+      let x = a[k], y = b[k];
+      if(k === 'valor'){ x = Math.round(Number(x||0)*100); y = Math.round(Number(y||0)*100); }
+      else if(k === 'cartao'){ x = !!x; y = !!y; }
+      else { x = x == null ? '' : x; y = y == null ? '' : y; }
+      if(x !== y) out.push(FIELD_LABELS[k] + ': ' + fmtField(k, a[k]) + ' → ' + fmtField(k, b[k]));
+    });
+    return out;
+  }
+  function descExp(e){ return e.fornecedor + ' (' + fmtDateBR(e.vencimento) + ', ' + fmtCurrency(e.valor) + ')'; }
+
+  /* ---------- Duplicados e variação ---------- */
+  function dupKey(e){ return normKey(e.fornecedor) + '|' + Math.round(Number(e.valor||0)*100) + '|' + e.vencimento; }
+  function findDuplicate(data, excludeId){
+    const k = dupKey(data);
+    return expenses.find(function(x){ return x.id !== excludeId && dupKey(x) === k; });
+  }
+  function prevMonthMatch(e){
+    if(e.tipo !== 'Recorrente') return null;
+    const p = parseVenc(e.vencimento);
+    const py = p.m === 1 ? p.y - 1 : p.y, pm = p.m === 1 ? 12 : p.m - 1;
+    const prev = expenses.filter(function(x){
+      const xp = parseVenc(x.vencimento);
+      return x.tipo === 'Recorrente' && xp.y === py && xp.m === pm;
+    });
+    if(e.recurrenceId){
+      const byId = prev.filter(function(x){ return x.recurrenceId === e.recurrenceId; });
+      if(byId.length === 1) return byId[0];
+    }
+    const same = prev.filter(function(x){
+      return normKey(x.fornecedor) === normKey(e.fornecedor) && x.categoria === e.categoria &&
+             normKey(x.descricao) === normKey(e.descricao) && !!x.cartao === !!e.cartao;
+    });
+    return same.length === 1 ? same[0] : null;
+  }
+  function variationInfo(e){
+    const prev = prevMonthMatch(e);
+    if(!prev) return null;
+    const a = Number(prev.valor||0), b = Number(e.valor||0);
+    if(!a || Math.abs(b - a) < 0.01) return null;
+    const pct = (b - a) / a;
+    if(Math.abs(pct) < VAR_THRESHOLD) return null;
+    return { pct: pct, prev: a };
+  }
 
   const today = new Date();
-  let state = { month: today.getMonth() + 1, year: today.getFullYear(), search: '', category: '' };
+  let state = { month: today.getMonth() + 1, year: today.getFullYear(), search: '', category: '', status: '' };
 
   const STORAGE_KEY = 'painelFinanceiroPessoal:v1';
 
   let publishedSnap = '';
-  function snap(){ return JSON.stringify([expenses, el('ceoName').value, el('cartaoTitular').value]); }
+  function snap(){ return JSON.stringify([expenses, el('ceoName').value, el('cartaoTitular').value, history]); }
 
   function saveToStorage(){
     if(snap() === publishedSnap){ try{ localStorage.removeItem(STORAGE_KEY); }catch(e){} markDirty(false); return; }
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value,
+        expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value, history: history,
         baseUpdatedAt: remoteUpdatedAt, dirty: true
       }));
     }catch(err){ console.warn('localStorage indisponível', err); }
@@ -782,7 +903,8 @@
   }
 
   function applyData(d){
-    expenses = Array.isArray(d.expenses) ? d.expenses : [];
+    expenses = (Array.isArray(d.expenses) ? d.expenses : []).map(normalizeExpense);
+    history = Array.isArray(d.history) ? d.history : [];
     el('ceoName').value = d.ceoName || '';
     el('cartaoTitular').value = d.cartaoTitular || '';
   }
@@ -796,7 +918,7 @@
       const remote = await r.json();
       remoteUpdatedAt = remote.updatedAt || null;
       if(draft && draft.dirty && Array.isArray(draft.expenses) && draft.baseUpdatedAt === remoteUpdatedAt){
-        publishedSnap = JSON.stringify([remote.expenses||[], remote.ceoName||'', remote.cartaoTitular||'']); applyData(draft); markDirty(true);
+        applyData(remote); publishedSnap = snap(); applyData(draft); markDirty(true);
       } else {
         applyData(remote); publishedSnap = snap(); markDirty(false);
         try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
@@ -814,7 +936,7 @@
     try{
       const r = await fetch('/api/save', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value,
+        body: JSON.stringify({ expenses: expenses, ceoName: el('ceoName').value, cartaoTitular: el('cartaoTitular').value, history: history, user: currentUser(),
           baseUpdatedAt: remoteUpdatedAt, force: !!force })
       });
       const j = await r.json().catch(()=>({}));
@@ -1079,6 +1201,14 @@
     el('heroValue').textContent = fmtCurrency(total);
     el('totalMesValue').textContent = fmtCurrency(total);
     el('recorrenteValue').textContent = fmtCurrency(recorrente);
+    const sum = {Pendente:[0,0], Pago:[0,0], Conferido:[0,0]};
+    list.forEach(function(e){ const s = sum[statusOf(e)]; s[0]++; s[1] += Number(e.valor||0); });
+    const nVar = list.filter(function(e){ return variationInfo(e); }).length;
+    el('statusSummary').innerHTML = list.length === 0 ? '' :
+      '<span class="chip chip-pend">Pendente: ' + fmtCurrency(sum.Pendente[1]) + ' (' + sum.Pendente[0] + ')</span>' +
+      '<span class="chip chip-pago">Pago: ' + fmtCurrency(sum.Pago[1]) + ' (' + sum.Pago[0] + ')</span>' +
+      '<span class="chip chip-conf">Conferido: ' + fmtCurrency(sum.Conferido[1]) + ' (' + sum.Conferido[0] + ')</span>' +
+      (nVar ? '<span class="chip chip-var">⚠ ' + nVar + ' recorrente' + (nVar>1?'s':'') + ' com variação ≥ ' + Math.round(VAR_THRESHOLD*100) + '%</span>' : '');
   }
 
   function buildCardTableRows(list){
@@ -1210,14 +1340,20 @@
       });
     }
 
+    if(state.status){
+      list = list.filter(function(e){ return statusOf(e) === state.status; });
+    }
+    const dupCounts = {};
+    expensesForMonth().forEach(function(e){ const k = dupKey(e); dupCounts[k] = (dupCounts[k]||0) + 1; });
     const totalCount = list.length;
-    const checkedCount = list.filter(function(e){ return e.conferido; }).length;
+    const checkedCount = list.filter(function(e){ return statusOf(e) === 'Conferido'; }).length;
+    const pendCount = list.filter(function(e){ return statusOf(e) === 'Pendente'; }).length;
     el('tableCount').innerHTML = totalCount + ' lançamento' + (totalCount !== 1 ? 's' : '') +
-      ' · <span class="checked-count">' + checkedCount + ' conferido' + (checkedCount !== 1 ? 's' : '') + '</span>';
+      ' · ' + pendCount + ' pendente' + (pendCount !== 1 ? 's' : '') + ' · <span class="checked-count">' + checkedCount + ' conferido' + (checkedCount !== 1 ? 's' : '') + '</span>';
 
     const tbody = el('tableBody');
     if(list.length === 0){
-      const msg = (state.category || state.search.trim())
+      const msg = (state.category || state.status || state.search.trim())
         ? 'Nenhuma despesa encontrada para esse filtro.'
         : 'Nenhuma despesa encontrada. Clique em "+ Nova Despesa" para adicionar.';
       tbody.innerHTML = '<tr class="empty-row"><td colspan="8">' + msg + '</td></tr>';
@@ -1228,22 +1364,27 @@
       const tipoClass = e.tipo === 'Recorrente' ? 'type-recorrente' : 'type-variavel';
       const parcelaNote = (e.tipo === 'Variável' && e.parcela) ? '<div class="parcela-note">Parcela ' + escapeHtml(e.parcela) + '</div>' : '';
       const cartaoTag = e.cartao ? '<div class="cartao-tag">💳 ' + escapeHtml(e.titular||'Cartão') + '</div>' : '';
-      const checkedClass = e.conferido ? ' checked' : '';
+      const st = statusOf(e);
+      const checkedClass = st === 'Conferido' ? ' checked' : (st === 'Pago' ? ' st-pago' : '');
       const pgtCell = renderPgtCell(e);
-      rows += '<tr class="' + (e.conferido ? 'row-checked' : '') + '">' +
+      const stPill = '<button type="button" class="st-pill st-' + st.toLowerCase() + '" data-check="' + e.id + '" title="Clique para mudar o status">' + st + '</button>';
+      const dupBadge = (!e.cartao && dupCounts[dupKey(e)] > 1) ? '<div><span class="warn-badge dup-badge" title="Existe outro lançamento com mesmo fornecedor, valor e data">⚠ possível duplicado</span></div>' : '';
+      const vi = variationInfo(e);
+      const varBadge = vi ? '<span class="var-badge ' + (vi.pct > 0 ? 'var-up' : 'var-down') + '" title="Mês anterior: ' + fmtCurrency(vi.prev) + '">' + (vi.pct > 0 ? '▲ +' : '▼ ') + (vi.pct*100).toFixed(0) + '% vs mês ant.</span>' : '';
+      rows += '<tr class="' + (st === 'Conferido' ? 'row-checked' : (st === 'Pago' ? 'row-pago' : '')) + '">' +
         '<td>' + (idx+1) + '</td>' +
         '<td><div class="fornecedor">' + escapeHtml(e.fornecedor) + '</div>' +
           (e.descricao ? '<div class="descricao">' + escapeHtml(e.descricao) + '</div>' : '') +
-          cartaoTag +
+          cartaoTag + '<div>' + stPill + '</div>' + dupBadge +
         '</td>' +
         '<td><span class="cat-badge" style="background:' + colorForCategory(e.categoria) + '">' + escapeHtml(e.categoria) + '</span></td>' +
         '<td><span class="type-pill ' + tipoClass + '">' + e.tipo + '</span>' + parcelaNote + '</td>' +
         '<td>' + pgtCell + '</td>' +
         '<td class="venc">' + fmtDateBR(e.vencimento) + '</td>' +
-        '<td class="valor">' + fmtCurrency(e.valor) + '</td>' +
+        '<td class="valor">' + fmtCurrency(e.valor) + varBadge + '</td>' +
         '<td><div class="row-actions">' +
           '<button data-edit="' + e.id + '" title="Editar">✎</button>' +
-          '<button data-check="' + e.id + '" title="' + (e.conferido ? 'Desmarcar conferido' : 'Marcar como conferido') + '" class="check-btn' + checkedClass + '">✔</button>' +
+          '<button data-check="' + e.id + '" title="Status: ' + st + ' (clique para avançar)" class="check-btn' + checkedClass + '">✔</button>' +
           '<button data-del="' + e.id + '" title="Excluir">🗑</button>' +
         '</div></td>' +
         '</tr>';
@@ -1264,16 +1405,17 @@
   function toggleConferido(id){
     const e = expenses.find(function(x){ return x.id === id; });
     if(!e) return;
-    e.conferido = !e.conferido;
+    const old = statusOf(e);
+    e.status = STATUS_LIST[(STATUS_LIST.indexOf(old) + 1) % STATUS_LIST.length];
+    e.conferido = e.status === 'Conferido';
+    logChange('status', e.fornecedor + ' (' + fmtDateBR(e.vencimento) + '): ' + old + ' → ' + e.status);
     render();
   }
 
   function renderCategoriaDatalist(){
-    const cats = new Set(Object.keys(CATEGORY_COLORS));
-    expenses.forEach(function(e){ cats.add(e.categoria); });
-    el('categoriaList').innerHTML = Array.from(cats).map(function(c){
-      return '<option value="' + escapeHtml(c) + '">';
-    }).join('');
+    const sel = el('fCategoria'); const cur = sel.value;
+    sel.innerHTML = CATEGORIAS.map(function(c){ return '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>'; }).join('');
+    if(cur) sel.value = cur;
   }
 
   function escapeHtml(str){
@@ -1292,6 +1434,7 @@
     el('pixChaveField').style.display = 'none';
     el('applyFutureField').style.display = 'none';
     el('fAplicarFuturos').checked = false;
+    el('fStatus').value = 'Pendente';
 
     if(id){
       const e = expenses.find(function(x){ return x.id === id; });
@@ -1300,7 +1443,11 @@
         el('expenseId').value = e.id;
         el('fFornecedor').value = e.fornecedor;
         el('fDescricao').value = e.descricao||'';
+        if(!Array.prototype.some.call(el('fCategoria').options, function(o){ return o.value === e.categoria; })){
+          const o = document.createElement('option'); o.value = o.textContent = e.categoria; el('fCategoria').appendChild(o);
+        }
         el('fCategoria').value = e.categoria;
+        el('fStatus').value = statusOf(e);
         el('fTipo').value = e.tipo;
         el('fParcela').value = e.parcela||'';
         el('fVencimento').value = e.vencimento;
@@ -1328,6 +1475,7 @@
     const e = expenses.find(function(x){ return x.id === id; });
     if(!e) return;
     if(confirm('Excluir a despesa "' + e.fornecedor + '"?')){
+      logChange('excluiu', 'Excluiu ' + descExp(e));
       expenses = expenses.filter(function(x){ return x.id !== id; });
       render();
     }
@@ -1357,8 +1505,15 @@
       cartao: el('fCartao').checked,
       titular: el('fTitular').value.trim(),
       tipoPgt: el('fTipoPgt').value,
-      pixChave: el('fTipoPgt').value === 'Pix' ? el('fPixChave').value.trim() : ''
+      pixChave: el('fTipoPgt').value === 'Pix' ? el('fPixChave').value.trim() : '',
+      status: el('fStatus').value
     };
+    data.conferido = data.status === 'Conferido';
+    data.categoria = canonCategoria(data.categoria);
+    const dup = findDuplicate(data, id);
+    if(dup && !confirm('Já existe um lançamento com o mesmo fornecedor, valor e data:\n' + descExp(dup) + '\n\nDeseja salvar mesmo assim?')){
+      return;
+    }
     let mirroredCount = 0;
     if(id){
       const idx = expenses.findIndex(function(x){ return x.id === id; });
@@ -1366,14 +1521,18 @@
         const original = Object.assign({}, expenses[idx]);
         const existingRecurrenceId = original.recurrenceId || uid();
         expenses[idx] = Object.assign({id:id}, data, {recurrenceId: existingRecurrenceId});
+        const changes = diffExpense(original, expenses[idx]);
+        if(changes.length){ logChange('editou', 'Editou ' + original.fornecedor + ' (' + fmtDateBR(original.vencimento) + '): ' + changes.join('; ')); }
         if(el('fAplicarFuturos').checked && data.tipo === 'Recorrente'){
           mirroredCount = applyEditForward(expenses[idx], original);
+          if(mirroredCount) logChange('editou', 'Aplicou a alteração de ' + original.fornecedor + ' a ' + mirroredCount + ' mês(es) futuro(s)');
         }
       }
     } else {
       data.id = uid();
       expenses.push(data);
       mirroredCount = mirrorRecorrenteForward(data);
+      logChange('criou', 'Criou ' + descExp(data) + ' [' + data.categoria + ']' + (mirroredCount ? ' e espelhou para mais ' + mirroredCount + ' mês(es)' : ''));
     }
     const p = parseVenc(data.vencimento);
     state.year = p.y; state.month = p.m;
@@ -1477,6 +1636,7 @@
 
     closeMirrorModal();
     if(itemsMirrored > 0){
+      logChange('espelhou', 'Espelhou ' + itemsMirrored + ' recorrente(s) para ' + targetYear + ' (' + monthsCreated + ' lançamentos)');
       state.year = targetYear;
       state.month = 1;
     }
@@ -1495,6 +1655,25 @@
     state.category = el('categoryFilter').value;
     renderTable();
   });
+
+  el('statusFilter').addEventListener('change', function(){
+    state.status = el('statusFilter').value;
+    renderTable();
+  });
+
+  function openHistory(){
+    const list = el('historyList');
+    list.innerHTML = history.length === 0 ? '<div class="mirror-empty">Nenhuma alteração registrada ainda.</div>' :
+      history.slice().reverse().map(function(h){
+        const d = new Date(h.ts);
+        const when = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        return '<div class="history-item"><div class="meta">' + when + ' · <span class="who">' + escapeHtml(h.user) + '</span> · ' + escapeHtml(h.acao) + '</div>' + escapeHtml(h.texto) + '</div>';
+      }).join('');
+    el('historyOverlay').classList.add('open');
+  }
+  el('btnHistory').addEventListener('click', openHistory);
+  el('btnHistoryClose').addEventListener('click', function(){ el('historyOverlay').classList.remove('open'); });
+  el('historyOverlay').addEventListener('click', function(ev){ if(ev.target === el('historyOverlay')) el('historyOverlay').classList.remove('open'); });
 
   el('yearInput').addEventListener('change', function(){
     const y = parseInt(el('yearInput').value, 10);
@@ -1622,6 +1801,14 @@
           alert('Nenhum lançamento com "' + FATURA_FILTER_NAME + '" foi encontrado nessa planilha.');
           return;
         }
+        // Possíveis duplicados: itens da fatura iguais a lançamentos NÃO-cartão já existentes (fornecedor + valor + data)
+        const nonCard = {};
+        expenses.forEach(function(x){ if(!x.cartao) nonCard[dupKey(x)] = x; });
+        const dups = result.items.filter(function(it){ return nonCard[dupKey(it)]; });
+        if(dups.length && !confirm(dups.length + ' item(ns) da fatura parecem duplicar lançamentos já existentes (mesmo fornecedor, valor e data):\n\n' +
+            dups.slice(0,8).map(function(it){ return '• ' + descExp(it); }).join('\n') + (dups.length > 8 ? '\n…' : '') + '\n\nImportar mesmo assim?')){
+          return;
+        }
         // Replace existing card entries for the target month/year with the freshly imported set
         const before = expenses.length;
         expenses = expenses.filter(function(x){
@@ -1629,7 +1816,8 @@
           return !(x.cartao && p.y === result.year && p.m === result.month);
         });
         const removed = before - expenses.length;
-        expenses = expenses.concat(result.items);
+        expenses = expenses.concat(result.items.map(normalizeExpense));
+        logChange('importou', 'Importou fatura do cartão: ' + result.items.length + ' item(ns) em ' + MONTH_FULL[result.month-1] + '/' + result.year + (removed > 0 ? ' (substituindo ' + removed + ')' : ''));
         let mirroredMonths = 0;
         result.items.forEach(function(item){
           mirroredMonths += mirrorRecorrenteForward(item);
@@ -1762,7 +1950,8 @@
       try{
         const parsed = JSON.parse(e.target.result);
         if(Array.isArray(parsed)){
-          expenses = parsed;
+          expenses = parsed.map(normalizeExpense);
+          logChange('importou', 'Importou JSON com ' + parsed.length + ' despesa(s)');
           render();
           alert('Dados importados com sucesso.');
         } else {
