@@ -781,6 +781,12 @@
 <div class="overlay" id="whatsOverlay">
   <div class="modal history-modal">
     <h2>Texto para WhatsApp</h2>
+    <div class="field" style="margin-bottom:10px;">
+      <select id="whatsTipo">
+        <option value="mes">Fechamento do mês</option>
+        <option value="cartao">Fechamento do cartão PF</option>
+      </select>
+    </div>
     <textarea id="whatsText" style="width:100%; min-height:48vh; font-family:inherit; font-size:14px; line-height:1.45; padding:12px; border:1px solid var(--border); border-radius:10px;"></textarea>
     <div class="modal-actions">
       <button type="button" class="btn" id="btnWhatsClose">Fechar</button>
@@ -1855,7 +1861,50 @@
   const CONTA_DEPOSITO = 'Amiz';
   const CATEGORY_EMOJI = {'Aluguel':'🏠','Faculdade':'🎓','Condomínio':'🏢','Plano de Saúde':'🏥','Telefonia':'📱','Despesas Gerais':'💼','Ajuda de Custo':'💵','Imposto':'🧾','Mesada':'🍽️'};
   function money(n){ return fmtCurrency(n).replace(/\u00a0/g,' '); }
+  function niceName(s){
+    return String(s||'').trim().replace(/\s+(LTDA|S\/A|S\.A\.|EIRELI|ME)\.?$/i,'').toLowerCase().split(/\s+/).map(function(w){
+      return w.length <= 2 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(' ');
+  }
+  function buildCardText(){
+    const mes = MONTH_FULL[state.month-1];
+    const card = expensesForMonth().filter(function(e){ return e.cartao; }).sort(function(a,b){ return Number(b.valor||0) - Number(a.valor||0); });
+    const titular = el('cartaoTitular').value.trim();
+    let t = '💳 Fechamento do Cartão PF – ' + mes + '/' + state.year + '\n\n';
+    if(!card.length) return t + 'Não há lançamentos de cartão em ' + mes.toLowerCase() + '/' + state.year + '.';
+    const total = card.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+    const pagos = card.filter(function(e){ return statusOf(e) === 'Pago'; });
+    let situacao;
+    if(pagos.length === card.length){
+      const ds = pagos.map(function(e){ return e.pagoEm; }).filter(Boolean).sort();
+      situacao = '✅ Situação: paga' + (ds.length ? ' em ' + fmtDateBR(ds[ds.length-1]) : '');
+    } else if(pagos.length){
+      situacao = '⏳ Situação: parcialmente paga (' + pagos.length + ' de ' + card.length + ' lançamentos)';
+    } else { situacao = '⏳ Situação: a pagar'; }
+    const dataFatura = card.map(function(e){ return e.vencimento; }).sort().pop();
+    t += 'Segue o fechamento da fatura do cartão ' + (titular ? 'do ' + titular : 'PF') + '.\n\n' +
+      '💰 Total da fatura: ' + money(total) + '\n📅 Data da fatura: ' + fmtDateBR(dataFatura) + '\n' + situacao + '\n\n';
+    const pm = state.month === 1 ? 12 : state.month - 1, py = state.month === 1 ? state.year - 1 : state.year;
+    const prev = expenses.filter(function(e){ const p = parseVenc(e.vencimento); return e.cartao && p.y === py && p.m === pm; });
+    if(prev.length){
+      const pt = prev.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
+      const diff = total - pt;
+      const pct = pt ? (diff / pt * 100) : 0;
+      t += '📊 Comparativo com o mês anterior\n- ' + MONTH_FULL[pm-1] + ': ' + money(pt) + '\n- ' + mes + ': ' + money(total) + '\n' +
+        '- Diferença: ' + (diff < 0 ? '− ' : '+ ') + money(Math.abs(diff)) + ' (' + (diff < 0 ? '−' : '+') + Math.abs(pct).toFixed(1).replace('.',',') + '%)\n\n';
+    }
+    t += '📌 Detalhamento (' + card.length + ' lançamento' + (card.length !== 1 ? 's' : '') + ')\n\n' +
+      card.map(function(e){
+        const desc = e.descricao || (e.tipo === 'Recorrente' ? 'Recorrente' : 'Variável');
+        return '- ' + niceName(e.fornecedor) + ' — ' + desc + (e.tipo === 'Variável' && e.parcela ? ' (parcela ' + e.parcela + ')' : '') + ' — ' + money(e.valor);
+      }).join('\n');
+    if(card.length > 1 && total > 0){
+      t += '\n\n🔎 Maior gasto: ' + niceName(card[0].fornecedor) + ' (' + Math.round(Number(card[0].valor||0) / total * 100) + '% da fatura)';
+    }
+    return t;
+  }
   function buildWhatsText(){
+    if(el('whatsTipo') && el('whatsTipo').value === 'cartao') return buildCardText();
     const list = expensesForMonth();
     const mes = MONTH_FULL[state.month-1];
     const total = list.reduce(function(s,e){ return s + Number(e.valor||0); }, 0);
@@ -1876,12 +1925,13 @@
         '💳 Cartão PF: ' + money(cardTotal) + '\n\n' +
         card.map(function(e){
           const desc = e.descricao || (e.tipo === 'Recorrente' ? 'Recorrente' : 'Variável');
-          return '- ' + toTitleCase(e.fornecedor) + ' — ' + desc + (e.tipo === 'Variável' && e.parcela ? ' (parcela ' + e.parcela + ')' : '') + ' — ' + money(e.valor);
+          return '- ' + niceName(e.fornecedor) + ' — ' + desc + (e.tipo === 'Variável' && e.parcela ? ' (parcela ' + e.parcela + ')' : '') + ' — ' + money(e.valor);
         }).join('\n') + '\n\n';
     }
     t += '📊 Composição das despesas projetadas\n\n' + catLines.join('\n') + '\n\n⚠️ Valores sujeitos a atualização';
     return t;
   }
+  el('whatsTipo').addEventListener('change', function(){ el('whatsText').value = buildWhatsText(); });
   el('btnWhats').addEventListener('click', function(){
     el('whatsText').value = buildWhatsText();
     el('whatsOverlay').classList.add('open');
