@@ -367,6 +367,16 @@
   .status-summary .chip{padding:6px 11px; border-radius:20px; font-weight:600;}
   .chip-pend{background:#fdf0d8; color:#a86a00;} .chip-pago{background:#e1ecfb; color:#2f5fa8;}
   .chip-conf{background:var(--green-bg); color:var(--green);} .chip-var{background:#fde7e5; color:var(--red);}
+  .cc-sec{margin:14px 0 6px; font-weight:700; font-size:14px;}
+  .cc-sec.ok{color:var(--green);} .cc-sec.bad{color:var(--red);} .cc-sec.mid{color:#a86a00;}
+  .cc-item{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:12.5px; margin-bottom:6px;}
+  .cc-item input{margin-top:3px;}
+  .cc-item .sub{color:var(--muted); font-size:11.5px;}
+  .cc-item.bad{background:#fde7e5; border-color:#f3c3be;}
+  .cc-tag{display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px; margin-left:6px;}
+  .cc-tag.ex{background:var(--green-bg); color:var(--green);} .cc-tag.pr{background:#fdf0d8; color:#a86a00;}
+  .cc-kpis{display:flex; flex-wrap:wrap; gap:8px; font-size:12.5px;}
+  .cc-kpis span{background:#f0eee7; border-radius:20px; padding:5px 11px; font-weight:600;}
   .history-modal{max-width:640px; width:100%;}
   .history-list{max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;}
   .history-item{border:1px solid var(--border); border-radius:10px; padding:9px 12px; font-size:12.5px;}
@@ -543,6 +553,8 @@
       <span class="storage-indicator" id="storageIndicator" title="Salvo neste navegador">💾</span>
       <button class="icon-btn" id="btnClearStorage" title="Descartar alterações não publicadas">🗑</button>
       <button class="icon-btn" id="btnHistory" title="Histórico de alterações">📜</button>
+      <button class="icon-btn" id="btnConcilia" title="Conciliar extrato bancário (CSV)">🏦</button>
+      <input type="file" id="fExtrato" accept=".csv,.txt,text/csv" style="display:none">
       <button class="icon-btn" id="btnWhats" title="Gerar texto para WhatsApp">💬</button>
       <button class="icon-btn" id="btnScreenshot" title="Tirar print do mês (JPEG)">📸</button>
       <button class="btn btn-primary btn-compact" id="btnPublish" title="Publicar no GitHub/Vercel para todos verem">🚀 Publicar</button>
@@ -752,6 +764,17 @@
     <h2>Histórico de alterações</h2>
     <div class="history-list" id="historyList"></div>
     <div class="modal-actions"><button type="button" class="btn" id="btnHistoryClose">Fechar</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="conciliaOverlay">
+  <div class="modal history-modal">
+    <h2>Conciliação com o extrato</h2>
+    <div class="history-list" id="conciliaBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="btnConciliaClose">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btnConciliaApply">Marcar como Pago</button>
+    </div>
   </div>
 </div>
 
@@ -1661,6 +1684,171 @@
     state.status = el('statusFilter').value;
     renderTable();
   });
+
+  /* ---------- Conciliação com extrato bancário (CSV) ---------- */
+  const STOP = new Set(['ltda','sa','s','a','de','da','do','dos','das','e','cp','pix','enviado','recebido','pagamento','efetuado','titulo','cooperativa','empresarial','negocios','sociedade','editora','distribuidora','casa','conta','me','eireli']);
+  function tokens(s){
+    return normKey(s).replace(/[^a-z0-9 ]/g,' ').split(' ').filter(function(t){ return t.length >= 3 && !STOP.has(t) && !/^\d+$/.test(t); });
+  }
+  function nameScore(e, desc){
+    const a = tokens(e.fornecedor + ' ' + (e.descricao||'')), b = new Set(tokens(desc));
+    let n = 0; a.forEach(function(t){ if(b.has(t)) n++; });
+    return n;
+  }
+  function brDateToISO(s){ const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(s); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+  function brNum(s){ return Math.round(parseFloat(String(s).replace(/\./g,'').replace(',','.').replace(/[^0-9.\-]/g,'')) * 100) / 100; }
+  function parseExtrato(text){
+    const lines = text.split(/\r?\n/);
+    let start = '', end = '';
+    const per = /Per[ií]odo\s*;\s*(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text);
+    if(per){ start = brDateToISO(per[1]); end = brDateToISO(per[2]); }
+    const rows = [];
+    lines.forEach(function(ln){
+      const p = ln.split(';');
+      if(p.length < 3 || !/^\d{2}\/\d{2}\/\d{4}$/.test(p[0].trim())) return;
+      const valor = brNum(p[p.length-2]);
+      if(isNaN(valor)) return;
+      rows.push({ data: brDateToISO(p[0].trim()), desc: p.slice(1, p.length-2).join(';').replace(/"/g,'').trim(), valor: valor });
+    });
+    if(rows.length && (!start || !end)){
+      const ds = rows.map(function(r){ return r.data; }).sort();
+      start = start || ds[0]; end = end || ds[ds.length-1];
+    }
+    return { start: start, end: end, rows: rows };
+  }
+  function cents(n){ return Math.round(Number(n||0)*100); }
+
+  function conciliar(ext){
+    const scope = expenses.filter(function(e){ return e.vencimento >= ext.start && e.vencimento <= ext.end; });
+    const saidas = ext.rows.filter(function(r){ return r.valor < 0; }).map(function(r, i){ return { i: i, data: r.data, desc: r.desc, valor: Math.abs(r.valor), used: false }; });
+    const entradas = ext.rows.filter(function(r){ return r.valor > 0; });
+    const matches = [];
+    const usedE = new Set();
+
+    // fatura do cartão: saída igual ao total dos itens de cartão do período
+    const cardItems = scope.filter(function(e){ return e.cartao; });
+    let cardMatch = null;
+    if(cardItems.length){
+      const tot = cardItems.reduce(function(s,e){ return s + cents(e.valor); }, 0);
+      const s = saidas.find(function(x){ return !x.used && cents(x.valor) === tot; });
+      if(s){ s.used = true; cardMatch = { items: cardItems, saida: s, total: tot/100 }; }
+    }
+    const cand = scope.filter(function(e){ return !e.cartao; });
+
+    // 1) valor exato (desempate por nome e data)
+    const pairs = [];
+    cand.forEach(function(e){ saidas.forEach(function(s){
+      if(!s.used && cents(e.valor) === cents(s.valor)){
+        pairs.push({ e: e, s: s, ns: nameScore(e, s.desc), dd: Math.abs(new Date(e.vencimento) - new Date(s.data)) });
+      }
+    }); });
+    pairs.sort(function(a,b){ return b.ns - a.ns || a.dd - b.dd; });
+    pairs.forEach(function(p){
+      if(usedE.has(p.e.id) || p.s.used) return;
+      usedE.add(p.e.id); p.s.used = true;
+      matches.push({ e: p.e, s: p.s, tipo: 'exato' });
+    });
+    // 2) provável: nome em comum e valor até 10% de diferença
+    const pairs2 = [];
+    cand.forEach(function(e){ if(usedE.has(e.id)) return; saidas.forEach(function(s){
+      if(s.used) return;
+      const ns = nameScore(e, s.desc);
+      const diff = Math.abs(s.valor - Number(e.valor||0));
+      if(ns >= 1 && Number(e.valor) > 0 && diff / Number(e.valor) <= 0.10) pairs2.push({ e: e, s: s, ns: ns, diff: diff });
+    }); });
+    pairs2.sort(function(a,b){ return b.ns - a.ns || a.diff - b.diff; });
+    pairs2.forEach(function(p){
+      if(usedE.has(p.e.id) || p.s.used) return;
+      usedE.add(p.e.id); p.s.used = true;
+      matches.push({ e: p.e, s: p.s, tipo: 'provavel' });
+    });
+    const semPagto = cand.filter(function(e){ return !usedE.has(e.id) && statusOf(e) !== 'Pago'; });
+    const pagoSemExtrato = cand.filter(function(e){ return !usedE.has(e.id) && statusOf(e) === 'Pago'; });
+    const semDespesa = saidas.filter(function(s){ return !s.used; });
+    return { ext: ext, matches: matches, cardMatch: cardMatch, semPagto: semPagto, pagoSemExtrato: pagoSemExtrato,
+             semDespesa: semDespesa, entradas: entradas, saidasTotal: saidas.reduce(function(s,x){ return s + x.valor; }, 0),
+             cardUnmatched: (!cardMatch && cardItems.length) ? cardItems : [] };
+  }
+
+  let conciliaResult = null;
+  function renderConcilia(r){
+    conciliaResult = r;
+    const entTot = r.entradas.reduce(function(s,x){ return s + x.valor; }, 0);
+    let html = '<div class="cc-kpis"><span>Período: ' + fmtDateBR(r.ext.start) + ' a ' + fmtDateBR(r.ext.end) + '</span>' +
+      '<span>Entradas: ' + fmtCurrency(entTot) + '</span><span>Saídas: ' + fmtCurrency(r.saidasTotal) + '</span></div>';
+    const novos = r.matches.filter(function(m){ return statusOf(m.e) !== 'Pago'; });
+    const jaPago = r.matches.length - novos.length;
+    html += '<div class="cc-sec ok">✅ Pagamentos encontrados no extrato (' + r.matches.length + ')' + (jaPago ? ' · ' + jaPago + ' já estavam como Pago' : '') + '</div>';
+    r.matches.forEach(function(m, idx){
+      const already = statusOf(m.e) === 'Pago';
+      const diff = m.s.valor - Number(m.e.valor||0);
+      html += '<label class="cc-item"><input type="checkbox" data-cc="m' + idx + '"' + (already ? ' disabled checked' : ' checked') + '>' +
+        '<div><b>' + escapeHtml(m.e.fornecedor) + '</b> — ' + fmtCurrency(m.e.valor) + ' (venc. ' + fmtDateBR(m.e.vencimento) + ')' +
+        (m.tipo === 'provavel' ? '<span class="cc-tag pr">provável: extrato ' + (diff > 0 ? '+' : '') + fmtCurrency(diff).replace('R$ ','R$ ') + '</span>' : '<span class="cc-tag ex">valor exato</span>') +
+        (already ? '<span class="cc-tag ex">já Pago</span>' : '') +
+        '<div class="sub">Extrato: ' + fmtDateBR(m.s.data) + ' · ' + escapeHtml(m.s.desc) + ' · ' + fmtCurrency(m.s.valor) + '</div></div></label>';
+    });
+    if(r.cardMatch){
+      html += '<div class="cc-sec ok">💳 Fatura do cartão encontrada</div><label class="cc-item"><input type="checkbox" data-cc="card" checked>' +
+        '<div><b>' + r.cardMatch.items.length + ' itens do cartão</b> — ' + fmtCurrency(r.cardMatch.total) + '<span class="cc-tag ex">valor exato</span>' +
+        '<div class="sub">Extrato: ' + fmtDateBR(r.cardMatch.saida.data) + ' · ' + escapeHtml(r.cardMatch.saida.desc) + ' · ' + fmtCurrency(r.cardMatch.saida.valor) + '</div></div></label>';
+    } else if(r.cardUnmatched.length){
+      html += '<div class="cc-sec mid">💳 Nenhuma saída igual ao total do cartão (' + fmtCurrency(r.cardUnmatched.reduce(function(s,e){ return s + Number(e.valor||0); }, 0)) + ')</div>';
+    }
+    html += '<div class="cc-sec bad">⚠️ Despesas SEM pagamento no extrato (' + r.semPagto.length + ' · ' + fmtCurrency(r.semPagto.reduce(function(s,e){ return s + Number(e.valor||0); }, 0)) + ')</div>';
+    html += r.semPagto.length ? r.semPagto.map(function(e){
+      return '<div class="cc-item bad"><div><b>' + escapeHtml(e.fornecedor) + '</b> — ' + fmtCurrency(e.valor) + ' (venc. ' + fmtDateBR(e.vencimento) + ')<div class="sub">' + escapeHtml(e.descricao||'') + ' · status atual: ' + statusOf(e) + '</div></div></div>';
+    }).join('') : '<div class="cc-item"><div class="sub">Nenhuma — todas as despesas do período têm pagamento.</div></div>';
+    if(r.pagoSemExtrato.length){
+      html += '<div class="cc-sec mid">🔎 Marcadas como Pago, mas sem lançamento no extrato (' + r.pagoSemExtrato.length + ')</div>' + r.pagoSemExtrato.map(function(e){
+        return '<div class="cc-item"><div><b>' + escapeHtml(e.fornecedor) + '</b> — ' + fmtCurrency(e.valor) + ' (venc. ' + fmtDateBR(e.vencimento) + ')</div></div>';
+      }).join('');
+    }
+    if(r.semDespesa.length){
+      html += '<div class="cc-sec mid">❓ Saídas do extrato sem despesa na dash (' + r.semDespesa.length + ')</div>' + r.semDespesa.map(function(s){
+        return '<div class="cc-item"><div><b>' + fmtCurrency(s.valor) + '</b> · ' + fmtDateBR(s.data) + '<div class="sub">' + escapeHtml(s.desc) + '</div></div></div>';
+      }).join('');
+    }
+    el('conciliaBody').innerHTML = html;
+    el('btnConciliaApply').style.display = (novos.length || (r.cardMatch && r.cardMatch.items.some(function(e){ return statusOf(e) !== 'Pago'; }))) ? '' : 'none';
+    el('conciliaOverlay').classList.add('open');
+  }
+
+  el('btnConcilia').addEventListener('click', function(){ el('fExtrato').click(); });
+  el('fExtrato').addEventListener('change', function(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      let text;
+      try{ text = new TextDecoder('utf-8', {fatal:true}).decode(new Uint8Array(reader.result)); }
+      catch(e){ text = new TextDecoder('windows-1252').decode(new Uint8Array(reader.result)); }
+      const ext = parseExtrato(text);
+      if(!ext.rows.length){ alert('Não encontrei lançamentos nesse arquivo. Use o extrato em CSV (Data;Descrição;Valor;Saldo).'); return; }
+      renderConcilia(conciliar(ext));
+    };
+    reader.readAsArrayBuffer(file);
+    el('fExtrato').value = '';
+  });
+  el('btnConciliaClose').addEventListener('click', function(){ el('conciliaOverlay').classList.remove('open'); });
+  el('btnConciliaApply').addEventListener('click', function(){
+    const r = conciliaResult; if(!r) return;
+    let n = 0;
+    el('conciliaBody').querySelectorAll('input[data-cc]').forEach(function(cb){
+      if(!cb.checked || cb.disabled) return;
+      const k = cb.getAttribute('data-cc');
+      if(k === 'card'){
+        r.cardMatch.items.forEach(function(e){ if(statusOf(e) !== 'Pago'){ e.status = 'Pago'; e.conferido = false; e.pagoEm = r.cardMatch.saida.data; n++; } });
+      } else {
+        const m = r.matches[parseInt(k.slice(1), 10)];
+        if(m && statusOf(m.e) !== 'Pago'){ m.e.status = 'Pago'; m.e.conferido = false; m.e.pagoEm = m.s.data; n++; }
+      }
+    });
+    if(n){ logChange('conciliou', 'Conciliação com extrato (' + fmtDateBR(r.ext.start) + ' a ' + fmtDateBR(r.ext.end) + '): ' + n + ' despesa(s) marcada(s) como Pago; ' + r.semPagto.length + ' sem pagamento no extrato'); }
+    el('conciliaOverlay').classList.remove('open');
+    render();
+  });
+  el('conciliaOverlay').addEventListener('click', function(ev){ if(ev.target === el('conciliaOverlay')) el('conciliaOverlay').classList.remove('open'); });
 
   /* ---------- Texto para WhatsApp ---------- */
   const PIX_DEPOSITO = '43991061265';
