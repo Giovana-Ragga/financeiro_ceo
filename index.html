@@ -1768,6 +1768,31 @@
       usedE.add(p.e.id); p.s.used = true;
       matches.push({ e: p.e, s: p.s, tipo: 'provavel' });
     });
+    // 3) despesas com vencimento fora do período (pagas antes do vencimento ou com vencimento anterior):
+    //    exige nome em comum + valor exato (ou até 10% de diferença)
+    const DAY = 86400000, WINDOW = 45 * DAY;
+    const t0 = new Date(ext.start).getTime(), t1 = new Date(ext.end).getTime();
+    const fora = expenses.filter(function(e){
+      if(e.cartao || usedE.has(e.id)) return false;
+      const t = new Date(e.vencimento).getTime();
+      return (t > t1 && t - t1 <= WINDOW) || (t < t0 && t0 - t <= WINDOW);
+    });
+    const pairs3 = [];
+    fora.forEach(function(e){ saidas.forEach(function(s){
+      if(s.used) return;
+      const ns = nameScore(e, s.desc);
+      const diff = Math.abs(s.valor - Number(e.valor||0));
+      const exato = cents(e.valor) === cents(s.valor);
+      if(ns >= 1 && (exato || (Number(e.valor) > 0 && diff / Number(e.valor) <= 0.10))){
+        pairs3.push({ e: e, s: s, ns: ns, diff: diff, exato: exato });
+      }
+    }); });
+    pairs3.sort(function(a,b){ return (b.exato - a.exato) || (b.ns - a.ns) || (a.diff - b.diff); });
+    pairs3.forEach(function(p){
+      if(usedE.has(p.e.id) || p.s.used) return;
+      usedE.add(p.e.id); p.s.used = true;
+      matches.push({ e: p.e, s: p.s, tipo: p.exato ? 'exato' : 'provavel', fora: true });
+    });
     const semPagto = cand.filter(function(e){ return !usedE.has(e.id) && statusOf(e) !== 'Pago'; });
     const pagoSemExtrato = cand.filter(function(e){ return !usedE.has(e.id) && statusOf(e) === 'Pago'; });
     const semDespesa = saidas.filter(function(s){ return !s.used; });
@@ -1791,6 +1816,7 @@
       html += '<label class="cc-item"><input type="checkbox" data-cc="m' + idx + '"' + (already ? ' disabled checked' : ' checked') + '>' +
         '<div><b>' + escapeHtml(m.e.fornecedor) + '</b> — ' + fmtCurrency(m.e.valor) + ' (venc. ' + fmtDateBR(m.e.vencimento) + ')' +
         (m.tipo === 'provavel' ? '<span class="cc-tag pr">provável: extrato ' + (diff > 0 ? '+' : '') + fmtCurrency(diff).replace('R$ ','R$ ') + '</span>' : '<span class="cc-tag ex">valor exato</span>') +
+        (m.fora ? '<span class="cc-tag pr">' + (m.e.vencimento > r.ext.end ? 'pago antes do vencimento' : 'vencimento anterior ao período') + '</span>' : '') +
         (already ? '<span class="cc-tag ex">já Pago</span>' : '') +
         '<div class="sub">Extrato: ' + fmtDateBR(m.s.data) + ' · ' + escapeHtml(m.s.desc) + ' · ' + fmtCurrency(m.s.valor) + '</div></div></label>';
     });
